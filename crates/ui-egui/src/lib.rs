@@ -1991,7 +1991,7 @@ impl WordApp {
             ctx.request_repaint();
             return;
         }
-        let t = theme::Tokens::get(&ctx);
+        let t = theme::Tokens::get_for(&ctx, self.ui.theme);
         self.escape_free = self.dialog.is_none() && !self.ui.backstage && self.ui.keytips == keytips::Phase::Off && !egui::Popup::is_any_open(&ctx);
         // Keytips are read before layout so the frame paints the new state; badges paint after
         // the ribbon so they sit on top of it.

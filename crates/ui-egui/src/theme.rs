@@ -18,11 +18,13 @@ pub enum Appearance {
     Light,
     Dark,
     System,
+    /// Soft, coordinated pastel palette: powder blue, ivory and sage on warm grey, never pure white.
+    Soft,
 }
 
 impl Appearance {
     /// In menu order.
-    pub const ALL: [Appearance; 3] = [Appearance::System, Appearance::Light, Appearance::Dark];
+    pub const ALL: [Appearance; 4] = [Appearance::System, Appearance::Light, Appearance::Dark, Appearance::Soft];
 
     /// The value used in `ui.json` and by the `ui.theme` command.
     pub fn code(self) -> &'static str {
@@ -30,6 +32,7 @@ impl Appearance {
             Appearance::Light => "light",
             Appearance::Dark => "dark",
             Appearance::System => "system",
+            Appearance::Soft => "soft",
         }
     }
 
@@ -43,6 +46,7 @@ impl Appearance {
             Appearance::Light => "Light",
             Appearance::Dark => "Dark",
             Appearance::System => "Use system setting",
+            Appearance::Soft => "Soft (cream)",
         }
     }
 
@@ -50,7 +54,7 @@ impl Appearance {
     /// `System` falls back to light when the OS reports none.
     pub fn is_dark(self, system: Option<egui::Theme>) -> bool {
         match self {
-            Appearance::Light => false,
+            Appearance::Light | Appearance::Soft => false,
             Appearance::Dark => true,
             Appearance::System => system == Some(egui::Theme::Dark),
         }
@@ -59,7 +63,7 @@ impl Appearance {
     /// The egui theme preference: `System` stays automatic rather than resolving to a fixed theme.
     pub fn preference(self) -> egui::ThemePreference {
         match self {
-            Appearance::Light => egui::ThemePreference::Light,
+            Appearance::Light | Appearance::Soft => egui::ThemePreference::Light,
             Appearance::Dark => egui::ThemePreference::Dark,
             Appearance::System => egui::ThemePreference::System,
         }
@@ -365,8 +369,58 @@ impl Tokens {
             orange: Color32::from_rgb(0xF0, 0xA0, 0x50),
         }
     }
+    /// The Soft palette: powder blue, ivory and sage on warm grey; anthracite text, never black.
+    pub fn soft() -> Self {
+        Tokens {
+            dark: false,
+            title_bar: Color32::from_rgb(0xE4, 0xEC, 0xF2), // powder blue
+            ribbon: Color32::from_rgb(0xF3, 0xF1, 0xE8),    // ivory
+            tab_strip: Color32::from_rgb(0xE6, 0xEE, 0xE4), // sage
+            canvas: Color32::from_rgb(0xE8, 0xE4, 0xD8),    // warm grey (outside the page)
+            panel: Color32::from_rgb(0xF3, 0xF1, 0xE8),     // ivory
+            border: Color32::from_rgb(0xD9, 0xD6, 0xCB),
+            border_strong: Color32::from_rgb(0xB8, 0xB4, 0xA6),
+            text: Color32::from_rgb(0x2E, 0x2E, 0x33), // anthracite
+            text_dim: Color32::from_rgb(0x5C, 0x5C, 0x63),
+            text_disabled: Color32::from_rgb(0xA0, 0x9E, 0x96),
+            icon: Color32::from_rgb(0x4A, 0x4A, 0x50),
+            hover: Color32::from_rgb(0xE6, 0xEE, 0xE4), // light sage
+            pressed: Color32::from_rgb(0xD6, 0xE0, 0xD4),
+            checked: Color32::from_rgb(0xD6, 0xE4, 0xD4),
+            accent: Color32::from_rgb(0x6B, 0x8E, 0x6B), // dark sage
+            accent_text: Color32::from_rgb(0x4A, 0x6B, 0x4A),
+            on_accent: Color32::WHITE,
+            input: Color32::WHITE,
+            input_border: Color32::from_rgb(0x8A, 0x8A, 0x85),
+            group_label: Color32::from_rgb(0x70, 0x6E, 0x66),
+            ruler: Color32::from_rgb(0xFC, 0xF9, 0xF0),
+            ruler_margin: Color32::from_rgb(0xE0, 0xDC, 0xCE),
+            ruler_tick: Color32::from_rgb(0x70, 0x6E, 0x66),
+            status_bar: Color32::from_rgb(0xF3, 0xF1, 0xE8),
+            selection: Color32::from_rgba_unmultiplied(0x6B, 0x8E, 0x6B, 0x48),
+            find_highlight: Color32::from_rgba_unmultiplied(0xE8, 0xC8, 0x4A, 0x90),
+            page_shadow: Color32::from_rgba_unmultiplied(0x50, 0x48, 0x38, 0x22),
+            handle: Color32::WHITE,
+            handle_shadow: Color32::from_rgba_unmultiplied(0x50, 0x48, 0x38, 0x28),
+            guide: Color32::from_rgb(0xB8, 0x5A, 0x8A),
+            crop_handle: Color32::from_rgb(0x2E, 0x2E, 0x33),
+            crop_dim: Color32::from_rgba_unmultiplied(0x50, 0x48, 0x38, 0xE0),
+            menu: Color32::from_rgb(0xFC, 0xFA, 0xF4),
+            blue: Color32::from_rgb(0x5B, 0x8F, 0xB9),
+            red: Color32::from_rgb(0xD9, 0x53, 0x4F), // muted red, spelling
+            green: Color32::from_rgb(0x5A, 0x8F, 0x5A),
+            orange: Color32::from_rgb(0xD6, 0x8A, 0x3C),
+        }
+    }
     pub fn get(ctx: &egui::Context) -> Tokens {
         if ctx.global_style().visuals.dark_mode { Tokens::dark() } else { Tokens::light() }
+    }
+    /// The tokens for the chosen appearance: `Soft` has its own palette, the others follow egui's theme.
+    pub fn get_for(ctx: &egui::Context, appearance: Appearance) -> Tokens {
+        match appearance {
+            Appearance::Soft => Tokens::soft(),
+            _ => Tokens::get(ctx),
+        }
     }
 }
 
@@ -645,7 +699,11 @@ fn tracked_job(text: &str, font: &FontId, tracking: f32, color: Color32) -> egui
 /// Setting a concrete theme for `System` would pin the native window too, and macOS then stops
 /// reporting appearance changes (#311).
 pub fn apply(ctx: &egui::Context, appearance: Appearance) {
-    ctx.set_visuals_of(egui::Theme::Light, visuals(&Tokens::light()));
+    let light_tokens = match appearance {
+        Appearance::Soft => Tokens::soft(),
+        _ => Tokens::light(),
+    };
+    ctx.set_visuals_of(egui::Theme::Light, visuals(&light_tokens));
     ctx.set_visuals_of(egui::Theme::Dark, visuals(&Tokens::dark()));
     ctx.all_styles_mut(|s| {
         s.spacing.item_spacing = egui::vec2(6.0, 4.0);
@@ -872,5 +930,44 @@ mod tests {
             symbols.iter().filter(|(c, _)| !f.has_glyph(&font, *c)).map(|(c, file)| format!("{c} U+{:04X} in {file}", *c as u32)).collect()
         });
         assert!(missing.is_empty(), "symbols without a glyph: {missing:#?}");
+    }
+
+    #[test]
+    fn soft_palette_meets_contrast_and_colours() {
+        let t = super::Tokens::soft();
+        for (name, bg) in [
+            ("ribbon", t.ribbon),
+            ("panel", t.panel),
+            ("canvas", t.canvas),
+            ("title bar", t.title_bar),
+            ("status bar", t.status_bar),
+            ("menu", t.menu),
+            ("input", t.input),
+        ] {
+            let r = contrast(t.text, bg);
+            assert!(r >= 4.5, "soft: text on {name} is {r:.2}:1");
+        }
+        for (name, bg) in [("ribbon", t.ribbon), ("panel", t.panel)] {
+            let r = contrast(t.text_dim, bg);
+            assert!(r >= 4.5, "soft: text_dim on {name} is {r:.2}:1");
+        }
+        let r = contrast(t.on_accent, t.accent);
+        assert!(r >= 4.5, "soft: on_accent on accent is {r:.2}:1");
+        for (name, bg) in [("input", t.input), ("ribbon", t.ribbon), ("panel", t.panel)] {
+            let r = contrast(t.input_border, bg);
+            assert!(r >= 3.0, "soft: input_border on {name} is {r:.2}:1");
+        }
+        assert_eq!(t.text, egui::Color32::from_rgb(0x2E, 0x2E, 0x33));
+        assert_eq!(t.red, egui::Color32::from_rgb(0xD9, 0x53, 0x4F));
+        assert!(!t.dark);
+    }
+
+    #[test]
+    fn get_for_selects_the_soft_palette() {
+        let ctx = egui::Context::default();
+        let soft = super::Tokens::get_for(&ctx, super::Appearance::Soft);
+        assert_eq!(soft.text, super::Tokens::soft().text);
+        let light = super::Tokens::get_for(&ctx, super::Appearance::Light);
+        assert_eq!(light.text, super::Tokens::light().text);
     }
 }
