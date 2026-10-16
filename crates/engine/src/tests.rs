@@ -4553,10 +4553,15 @@ fn asian_typography_sets_flags_on_selected_paragraphs_and_undoes() {
 }
 
 #[test]
-fn manage_styles_lists_paragraph_character_linked_and_table_styles() {
+fn manage_styles_lists_only_the_curated_styles_in_fixed_order() {
     let mut s = s();
-    let list = run(&mut s, "styles.manage", json!({"sort": "alphabetical"}));
-    let list = list.as_array().unwrap();
+    // `sort` is still validated, but never re-orders: the order is fixed.
+    let alpha = run(&mut s, "styles.manage", json!({"sort": "alphabetical"}));
+    let rec = run(&mut s, "styles.manage", json!({}));
+    assert_eq!(alpha, rec, "the curated order does not depend on `sort`");
+    let list = rec.as_array().unwrap();
+    let names: Vec<&str> = list.iter().map(|x| x["name"].as_str().unwrap()).collect();
+    assert_eq!(names, ["Normal", "Title", "Heading 1", "Heading 2", "Subtitle", "Quote", "Emphasis"]);
     let find = |name: &str| list.iter().find(|x| x["name"] == name).unwrap_or_else(|| panic!("{name} listed"));
     assert_eq!(find("Normal")["type"], "paragraph");
     assert_eq!(find("Normal")["builtIn"], true);
@@ -4564,25 +4569,48 @@ fn manage_styles_lists_paragraph_character_linked_and_table_styles() {
     assert_eq!(find("Heading 1")["type"], "linked");
     assert_eq!(find("Heading 1")["basedOn"], "Normal");
     assert!(find("Heading 1")["format"]["size"].is_number(), "description formatting");
-    assert_eq!(find("Table Grid")["type"], "table");
-    assert!(list.iter().any(|x| x["type"] == "character"));
-    // The character half of a linked pair is listed once, as the linked style.
-    assert!(!list.iter().any(|x| x["id"] == "Heading1Char"));
-    let names: Vec<String> = list.iter().map(|x| x["name"].as_str().unwrap().to_lowercase()).collect();
-    assert!(names.windows(2).all(|w| w[0] <= w[1]), "alphabetical");
-    // Recommended order starts with Normal (priority 0); listing is not an edit.
-    let rec = run(&mut s, "styles.manage", json!({}));
-    assert_eq!(rec[0]["name"], "Normal");
+    assert_eq!(find("Emphasis")["type"], "character");
+    // The character half of a linked pair is not listed; styles outside the set are not offered.
+    for hidden in ["Heading1Char", "TableGrid", "Heading3", "NoSpacing"] {
+        assert!(!list.iter().any(|x| x["id"] == hidden), "{hidden} not offered");
+    }
+    // The curated gallery matches, and the other styles stay in the sheet for existing documents.
+    let gallery: Vec<&str> = s.doc.styles.curated_gallery().iter().map(|x| x.id.as_str()).collect();
+    assert_eq!(gallery, wordcraft_doc::styles::CURATED_STYLES);
+    assert!(s.doc.styles.get("Heading3").is_some());
     assert!(s.run("styles.manage", &json!({"sort": "sideways"})).is_err());
     assert!(!s.dirty);
+}
+
+/// Creating new styles is disabled: the style set is fixed.
+#[test]
+fn creating_a_style_is_refused_while_the_style_set_is_curated() {
+    let mut s = s();
+    assert!(s.run("styles.create", &json!({"name": "Mine"})).is_err());
+    assert!(s.doc.styles.find("Mine").is_none());
+}
+
+/// Adds a custom paragraph style directly (`styles.create` is disabled).
+fn add_custom_style(s: &mut Session, name: &str, based_on: &str) {
+    let id = s.doc.styles.new_id(name);
+    s.doc.styles.upsert(wordcraft_doc::Style {
+        id: id.clone(),
+        name: name.into(),
+        kind: wordcraft_doc::StyleKind::Paragraph,
+        based_on: Some(based_on.into()),
+        next: Some(id),
+        quick: true,
+        priority: Some(50),
+        ..Default::default()
+    });
 }
 
 #[test]
 fn deleting_a_style_falls_back_to_its_base_and_undoes() {
     let mut s = s();
     run(&mut s, "text.insert", json!({"text": "Styled"}));
-    run(&mut s, "styles.create", json!({"name": "Mine", "basedOn": "Heading 1"}));
-    run(&mut s, "styles.create", json!({"name": "Child", "basedOn": "Mine", "fromSelection": false}));
+    add_custom_style(&mut s, "Mine", "Heading1");
+    add_custom_style(&mut s, "Child", "Mine");
     run(&mut s, "styles.apply", json!({"style": "Mine"}));
     assert_eq!(para_style(&s, 0).as_deref(), Some("Mine"));
     let r = run(&mut s, "styles.delete", json!({"style": "Mine"}));
@@ -4617,15 +4645,16 @@ fn deleting_a_table_style_from_manage_styles_uses_table_style_deletion() {
         st.builtin = false;
     }
     assert!(s.run("styles.delete", &json!({"style": "Table Grid"})).is_err());
+    // Table styles are not offered by the curated Manage Styles, but stay in the sheet.
     let list = run(&mut s, "styles.manage", json!({}));
-    let grid = list.as_array().unwrap().iter().find(|x| x["name"] == "Table Grid").unwrap();
-    assert_eq!(grid["builtIn"], true);
+    assert!(!list.as_array().unwrap().iter().any(|x| x["name"] == "Table Grid"));
+    assert!(s.doc.styles.get("TableGrid").is_some());
 }
 
 #[test]
 fn style_visibility_round_trips_through_docx() {
     let mut s = s();
-    run(&mut s, "styles.create", json!({"name": "Mine", "fromSelection": false}));
+    add_custom_style(&mut s, "Mine", "Normal");
     run(&mut s, "styles.setVisibility", json!({"style": "Heading 1", "gallery": false}));
     run(&mut s, "styles.setVisibility", json!({"style": "Mine", "hidden": true}));
     run(&mut s, "styles.setVisibility", json!({"style": "Heading 4", "gallery": true}));

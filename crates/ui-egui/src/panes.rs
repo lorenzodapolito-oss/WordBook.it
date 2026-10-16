@@ -290,9 +290,7 @@ fn styles(app: &mut WordApp, ui: &mut Ui) {
         .unwrap_or_else(|| st.get("styleName").and_then(Value::as_str).unwrap_or("").to_string());
     ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Current style: {style}"), &[("style", &current_name)])).small());
     ui.horizontal(|ui| {
-        if ui.button(tl!("New Style…")).clicked() {
-            app.dialog = crate::dialogs::Dialog::open("newStyle", app);
-        }
+        // No "New Style…": the style set is fixed (see `wordcraft_doc::styles::CURATED_STYLES`).
         if ui.button(tl!("Update to Match")).clicked() {
             let _ = app.run("styles.updateToMatch", json!({}));
         }
