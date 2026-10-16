@@ -307,16 +307,15 @@ fn styles(app: &mut WordApp, ui: &mut Ui) {
         let _ = app.run("styles.inspector", json!({}));
     }
     ui.separator();
-    let mut list: Vec<(String, String, bool)> = app
+    // Only the curated styles, in their fixed order (no alphabetical re-sorting).
+    let list: Vec<(String, String, bool)> = app
         .session
         .doc
         .styles
-        .styles
-        .iter()
-        .filter(|s| !s.hidden && s.kind != wordcraft_doc::StyleKind::Table)
+        .curated_gallery()
+        .into_iter()
         .map(|s| (s.id.clone(), crate::i18n::style_name(s), s.kind == wordcraft_doc::StyleKind::Character))
         .collect();
-    list.sort_by_key(|s| s.1.to_lowercase());
     egui::ScrollArea::vertical().show(ui, |ui| {
         for (id, name, is_char) in list {
             ui.horizontal(|ui| {

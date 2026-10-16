@@ -420,6 +420,10 @@ pub struct TableStyleProps {
     pub parts: TableStyleParts,
 }
 
+/// The only styles the Styles gallery, the Styles pane and Manage Styles offer, in display order
+/// (style ids). Italian names: Normale, Titolo, Titolo 1, Titolo 2, Sottotitolo, Citazione, Enfasi.
+pub const CURATED_STYLES: [&str; 7] = ["Normal", "Title", "Heading1", "Heading2", "Subtitle", "Quote", "Emphasis"];
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct StyleSheet {
@@ -728,6 +732,16 @@ impl StyleSheet {
         let mut v: Vec<&Style> = self.styles.iter().filter(|s| s.quick && !s.hidden && s.kind != StyleKind::Table).collect();
         v.sort_by_key(|s| (s.priority.unwrap_or(99), s.name.clone()));
         v
+    }
+    /// The curated gallery: only the styles of [`CURATED_STYLES`] the sheet has, in that fixed
+    /// order (no priority sort, no alphabetical sort). Styles outside the list stay in the sheet
+    /// so that documents using them still render and round-trip, but they are not offered.
+    pub fn curated_gallery(&self) -> Vec<&Style> {
+        CURATED_STYLES.iter().filter_map(|id| self.get(id)).filter(|s| s.kind != StyleKind::Table).collect()
+    }
+    /// Whether style `id` is one of [`CURATED_STYLES`].
+    pub fn is_curated(id: &str) -> bool {
+        CURATED_STYLES.contains(&id)
     }
     /// The `based_on` chain from the root down to `id` (bounded, cycle-safe).
     pub fn chain(&self, id: &str) -> Vec<&Style> {

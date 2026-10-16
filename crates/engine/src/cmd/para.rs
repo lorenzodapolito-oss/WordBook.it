@@ -214,7 +214,7 @@ pub fn specs() -> Vec<CommandSpec> {
             .params(r#"{"style": string, "gallery"?: bool (Styles gallery, w:qFormat), "hidden"?: bool (hidden from style lists, w:semiHidden)}"#),
         CommandSpec::new("styles.list", "Styles", "Home › Styles", |s, _| {
             Ok(Value::Array(
-                s.doc.styles.styles.iter().map(|st| json!({"id": st.id, "name": st.name, "kind": st.kind, "quick": st.quick, "basedOn": st.based_on})).collect(),
+                s.doc.styles.curated_gallery().into_iter().map(|st| json!({"id": st.id, "name": st.name, "kind": st.kind, "quick": st.quick, "basedOn": st.based_on})).collect(),
             ))
         })
         .pure(),
@@ -912,10 +912,17 @@ fn natural_cmp(a: &(Option<f64>, SortKey), b: &(Option<f64>, SortKey)) -> std::c
     num.then_with(|| a.1.cmp(&b.1))
 }
 
+/// New styles can't be created while the style set is curated; flip to allow them again.
+const STYLE_CREATION_ENABLED: bool = false;
+
 fn create_style(s: &mut Session, v: &Value) -> CmdResult {
     let name = p::req_str(v, "name")?.trim().to_string();
     if name.is_empty() {
         return Err(CmdError::Params("name is empty".into()));
+    }
+    // The style set is fixed (`wordcraft_doc::styles::CURATED_STYLES`).
+    if !STYLE_CREATION_ENABLED {
+        return Err(CmdError::Failed("creating new styles is disabled: this editor offers a fixed set of styles".into()));
     }
     if s.doc.styles.find(&name).is_some() {
         return Err(CmdError::Failed(format!("a style named `{name}` already exists")));
@@ -1143,23 +1150,9 @@ fn set_visibility(s: &mut Session, v: &Value) -> CmdResult {
 pub fn manage_list(s: &Session, alphabetical: bool) -> Value {
     let sheet = &s.doc.styles;
     let links_back = |a: &Style, b: &str| sheet.get(b).is_some_and(|x| x.linked.as_deref() == Some(a.id.as_str()));
-    let mut list: Vec<&Style> = sheet
-        .styles
-        .iter()
-        .filter(|st| match st.kind {
-            StyleKind::Numbering => false,
-            // The character half of a linked pair is listed as the linked style.
-            StyleKind::Character => {
-                !st.linked.as_deref().is_some_and(|l| sheet.get(l).is_some_and(|x| x.kind == StyleKind::Paragraph) && links_back(st, l))
-            }
-            _ => true,
-        })
-        .collect();
-    if alphabetical {
-        list.sort_by_cached_key(|st| st.name.to_lowercase());
-    } else {
-        list.sort_by_cached_key(|st| (st.priority.unwrap_or(99), st.name.to_lowercase()));
-    }
+    // Only the curated styles, always in their fixed order: `alphabetical` no longer re-sorts them.
+    let _ = alphabetical;
+    let list: Vec<&Style> = sheet.curated_gallery();
     Value::Array(
         list.into_iter()
             .map(|st| {
