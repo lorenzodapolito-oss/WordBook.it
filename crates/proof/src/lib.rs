@@ -31,6 +31,8 @@
 //! - **Czech** ([`ProofLang::Cs`], module [`cs`]): the installed Hunspell `cs_CZ` dictionary
 //!   (not bundled), dictionary-driven suggestions and generic checks with Czech messages.
 //!   Hyphenation uses the existing English fallback; no Czech patterns are bundled.
+//! - **Thesaurus** ([`thesaurus`]): Italian synonyms from the installed MyThes `th_it_IT` file
+//!   (LGPL, so not bundled; read from the same folders as the dictionaries).
 //! - **Other languages** ([`ProofLang::Other`]): no spelling or grammar marks, like Word without
 //!   the language's proofing tools.
 //! - **Hyphenation** ([`hyphen`]): dictionary, Liang patterns (English, Polish, Portuguese),
@@ -52,6 +54,7 @@ pub mod patterns;
 pub mod pl;
 pub mod pt;
 pub mod ru;
+pub mod thesaurus;
 pub mod tr;
 pub mod vi;
 
@@ -146,6 +149,7 @@ pub fn set_dictionaries_folder(dir: Option<std::path::PathBuf>) {
     it::reload_dictionary();
     hr::reload_dictionary();
     tr::reload_dictionary();
+    thesaurus::reload();
     DICTIONARY_GENERATION.fetch_add(1, Ordering::Relaxed);
 }
 

@@ -342,6 +342,7 @@ impl AutoCorrectForm {
             "capDays": o.cap_days,
             "capsLock": o.caps_lock,
             "smartQuotes": o.smart_quotes,
+            "guillemets": o.guillemets,
             "fractions": o.fractions,
             "ordinals": o.ordinals,
             "dashes": o.dashes,
@@ -387,6 +388,7 @@ fn autocorrect_ui(app: &mut WordApp, ui: &mut Ui, f: &mut AutoCorrectForm) -> bo
             let o = &mut f.options;
             heading(ui, "Replace as you type");
             ui.checkbox(&mut o.smart_quotes, tl!("Smart quotes instead of straight quotes"));
+            ui.add_enabled(o.smart_quotes, egui::Checkbox::new(&mut o.guillemets, tl!("Guillemets « » for double quotes in Italian text")));
             ui.checkbox(&mut o.fractions, tl!("Fractions (1/2) as fraction characters (½)"));
             ui.checkbox(&mut o.ordinals, tl!("Ordinals (1st) as superscript"));
             ui.checkbox(&mut o.dashes, tl!("Hyphens (--) as dashes (—)"));

@@ -933,17 +933,52 @@ fn thesaurus(s: &mut Session, v: &Value) -> CmdResult {
         ("shared", &["common", "joint", "communal", "mutual"]),
         ("community", &["group", "society", "collective", "circle"]),
     ];
-    let word = match p::str(v, "word") {
-        Some(w) => w.to_lowercase(),
+    // The word as typed (its case is kept for the synonyms) and its proofing language: the text
+    // at the caret, or `lang` (a BCP 47 tag) for a word given by hand.
+    let (orig, lang) = match p::str(v, "word") {
+        Some(w) => (w.trim().to_string(), wordcraft_proof::ProofLang::from_tag(p::str(v, "lang").or(s.editing_lang.as_deref()))),
         None => {
             let f = s.sel.focus.clone();
             let p = s.doc.para_at(&f).ok_or_else(|| CmdError::Failed("no word".into()))?;
             let (a, b) = p.word_at(f.off);
-            p.text.get(a..b).unwrap_or("").trim().to_lowercase()
+            (p.text.get(a..b).unwrap_or("").trim().to_string(), super::tools::proof_lang_at(s, &f, a))
         }
     };
-    let syn = T.iter().find(|(w, _)| *w == word).map(|(_, l)| l.to_vec()).unwrap_or_default();
-    Ok(json!({"word": word, "synonyms": syn}))
+    let word = orig.to_lowercase();
+    // Italian reads the MyThes file installed on the system (LGPL: never bundled).
+    if let Some(th) = wordcraft_proof::thesaurus::for_lang(lang) {
+        let meanings = th.lookup(&orig);
+        let mut synonyms: Vec<String> = Vec::new();
+        for m in &meanings {
+            for syn in &m.synonyms {
+                let syn = match_case(&orig, syn);
+                if !synonyms.contains(&syn) {
+                    synonyms.push(syn);
+                }
+            }
+        }
+        synonyms.truncate(60);
+        let senses: Vec<Value> = meanings
+            .iter()
+            .map(|m| json!({"label": m.label, "synonyms": m.synonyms.iter().map(|x| match_case(&orig, x)).collect::<Vec<_>>()}))
+            .collect();
+        return Ok(json!({"word": word, "language": lang.code(), "available": !th.is_empty(), "synonyms": synonyms, "meanings": senses}));
+    }
+    let syn = T.iter().find(|(w, _)| *w == word).map(|(_, l)| l.iter().map(|x| match_case(&orig, x)).collect::<Vec<_>>()).unwrap_or_default();
+    Ok(json!({"word": word, "language": lang.code(), "available": true, "synonyms": syn}))
+}
+
+/// `syn` written in the case of the word it replaces: "Bello" → "Grazioso", "BELLO" → "GRAZIOSO".
+fn match_case(orig: &str, syn: &str) -> String {
+    let letters = orig.chars().filter(|c| c.is_alphabetic()).count();
+    if letters > 1 && orig.chars().filter(|c| c.is_alphabetic()).all(char::is_uppercase) {
+        return syn.to_uppercase();
+    }
+    if orig.chars().next().is_some_and(char::is_uppercase) {
+        let mut c = syn.chars();
+        return c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default();
+    }
+    syn.to_string()
 }
 
 /// Track Changes Options: change the fields given, return them all. A per-user preference.

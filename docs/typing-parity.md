@@ -1,6 +1,6 @@
 # Typing parity with Word
 
-> **Last reviewed:** 2026-10-11 · **Last updated:** 2026-10-14 · **Change:** trivial (Shift+Delete cuts the selection on every platform, #1669; previously trivial: Select All then Delete removes a table the document starts with, #1198; previously trivial: Alt+numpad character codes, #961; previously trivial: Down and Up from a line start beside a table go into it, #1007; previously trivial: sample-text formulas on Enter, #1067; previously trivial: Track Changes: Accept All after a tracked delete from a paragraph end keeps the next paragraph; Reject All after typing into an empty paragraph keeps it (#864); previously minor: Correct TWo INitial CApitals, cAPS LOCK and table-cell capitals, #544; previously trivial: complex-script caret and Backspace, #604; Move Paragraph Up/Down, Promote/Demote, Go Back and Alt+X keys, #343) · **Target:** Microsoft Word (Microsoft 365) for Mac 16.113.4
+> **Last reviewed:** 2026-10-11 · **Last updated:** 2026-10-16 · **Change:** trivial (Shift+Delete cuts the selection on every platform, #1669; previously trivial: Select All then Delete removes a table the document starts with, #1198; previously trivial: Alt+numpad character codes, #961; previously trivial: Down and Up from a line start beside a table go into it, #1007; previously trivial: sample-text formulas on Enter, #1067; previously trivial: Track Changes: Accept All after a tracked delete from a paragraph end keeps the next paragraph; Reject All after typing into an empty paragraph keeps it (#864); previously minor: Correct TWo INitial CApitals, cAPS LOCK and table-cell capitals, #544; previously trivial: complex-script caret and Backspace, #604; Move Paragraph Up/Down, Promote/Demote, Go Back and Alt+X keys, #343) · **Target:** Microsoft Word (Microsoft 365) for Mac 16.113.4
 
 What Word does when you type, observed black-box (same keystrokes typed into Word and
 WordCraft, results read back paragraph by paragraph) and pinned by tests in
@@ -137,6 +137,19 @@ Applied when a word is finished by a space, punctuation **or Enter** (`enter_fin
   Croatian, Bosnian and Serbian `i` is kept only when the text is tagged with that language: those
   interfaces don't set an editing language yet. Per-language lists for other languages aren't
   there yet (#735).
+- **Italian** has its own built-in list (`AUTOCORRECT_IT`, our own: `perchè` → `perché`,
+  `qual'è` → `qual è`, `un'altro` → `un altro`, `e'` → `è`, `pò` → `po'`, `citta` → `città`,
+  `lunedi` → `lunedì`, frequent misspellings), applied only to Italian text. A curly apostrophe
+  typed by smart quotes matches the straight one, and the replacement keeps it curly. Italian
+  abbreviations (`sig.`, `dott.`, `prof.`, `art.`, `ecc.`…) don't end a sentence in Italian text,
+  so the next word keeps its case. Options › Autocorrect › "Guillemets « »" turns double quotes
+  into «…» in Italian text (off by default; `tools.autocorrect {"guillemets": true}`). Pinned by
+  `autocorrect_italian_*` and `autocorrect_guillemets_for_italian_double_quotes`.
+- **Thesaurus** (`review.thesaurus`, Shift+F7, the context menu's Synonyms): English keeps a small
+  built-in list; Italian reads the MyThes `th_it_IT_v2.dat` installed on the system (LGPL, never
+  bundled: same folders as the Hunspell dictionaries, then `/usr/share/mythes`), finds inflected
+  forms (`belle` → `bello`, `l'amico`, `amiche`) and gives the synonyms in the case of the word
+  (`thesaurus_reads_the_installed_italian_file_and_keeps_the_words_case`).
 
 ¹ From Word's documented AutoFormat and AutoCorrect options; not yet keystroke-compared with
 Word.
@@ -202,6 +215,7 @@ Word.
 | 2026-10-12 | trivial | Sample-text formulas on Enter (#1067), exact matching, bounded parameters, original English and one-step undo |
 | 2026-10-13 | minor | Alt+numpad decimal character codes: the ANSI code page with a leading 0, the OEM page without (the system locale's on Windows: 1250–1254, 437/737/850/852/857/866), Unicode above 255 (#961) |
 | 2026-10-13 | trivial | Fields: text typed or pasted just after a field (a Zotero citation) goes outside it (#898) |
+| 2026-10-16 | minor | AutoCorrect: built-in Italian replacement list and abbreviations for Italian text, optional «guillemets»; Thesaurus reads an installed MyThes Italian file |
 | 2026-10-14 | trivial | Track Changes: a table delete over text already marked deleted changes nothing, so Reject All still restores it (#1329 review 2) |
 | 2026-10-14 | trivial | Track Changes: empty tables are removed under tracking; Delete Columns leaves merged cells that keep a column; repeated Change Case reads only live text (#1329 review) |
 | 2026-10-14 | trivial | Track Changes: table deletes mark the cells' text deleted and keep the table; Change Case is a tracked delete+insert (differs from Word's hidden formatting revision); Unlink Fields stays untracked; all three refuse locked content controls (#1329) |

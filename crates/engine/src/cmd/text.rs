@@ -56,7 +56,11 @@ fn autoformat(s: &mut Session, text: &str) -> Option<String> {
     let before = para.text.get(..f.off)?;
     let prev = before.chars().next_back();
     let opening = prev.is_none_or(|p| p.is_whitespace() || "([{<\u{2014}\u{2013}".contains(p));
+    // Italian text can take «guillemets» for double quotes (AutoCorrect Options).
+    let at = before.char_indices().next_back().map_or(0, |(i, _)| i);
+    let guillemets = s.prefs.autocorrect.guillemets && super::tools::proof_lang_at(s, f, at) == wordcraft_proof::ProofLang::It;
     match c {
+        '"' if guillemets => Some(if opening { "\u{00AB}" } else { "\u{00BB}" }.into()),
         '"' => Some(if opening { "\u{201C}" } else { "\u{201D}" }.into()),
         '\'' => Some(if opening { "\u{2018}" } else { "\u{2019}" }.into()),
         _ => None,

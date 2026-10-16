@@ -60,6 +60,97 @@ pub const AUTOCORRECT: &[(&str, &str)] = &[
     ("3/4", "¾"),
 ];
 
+/// Built-in AutoCorrect replacements for text in Italian (our own list of frequent slips: missing
+/// or wrong accents and apostrophes, doubled or dropped letters). They apply only to text whose
+/// language is Italian, as Word keeps a list per language; typed with a curly apostrophe they
+/// match the same, and the replacement then uses the curly one too.
+pub const AUTOCORRECT_IT: &[(&str, &str)] = &[
+    // Accent instead of the acute (perchè → perché) or none at all.
+    ("perchè", "perché"),
+    ("perche", "perché"),
+    ("poichè", "poiché"),
+    ("poiche", "poiché"),
+    ("benchè", "benché"),
+    ("benche", "benché"),
+    ("finchè", "finché"),
+    ("finche", "finché"),
+    ("affinchè", "affinché"),
+    ("affinche", "affinché"),
+    ("anzichè", "anziché"),
+    ("anziche", "anziché"),
+    ("cosicchè", "cosicché"),
+    ("nè", "né"),
+    ("sè", "sé"),
+    ("cioe", "cioè"),
+    ("caffe", "caffè"),
+    ("cosi", "così"),
+    ("piu", "più"),
+    ("gia", "già"),
+    ("giu", "giù"),
+    // Accents that don't exist: a grave on a one-syllable word.
+    ("nò", "no"),
+    ("fà", "fa"),
+    ("stà", "sta"),
+    ("và", "va"),
+    ("pò", "po'"),
+    // The verb essere: "è" typed as e' / without accent after an elision.
+    ("e'", "è"),
+    ("c'e", "c'è"),
+    ("cos'e", "cos'è"),
+    ("com'e", "com'è"),
+    ("dov'e", "dov'è"),
+    ("qual'è", "qual è"),
+    ("qual'e", "qual è"),
+    // An apostrophe where a masculine word needs none.
+    ("un'altro", "un altro"),
+    ("un'amico", "un amico"),
+    ("un'albero", "un albero"),
+    ("un'uomo", "un uomo"),
+    // Nouns in -à and days in -ì typed without the accent.
+    ("citta", "città"),
+    ("universita", "università"),
+    ("qualita", "qualità"),
+    ("possibilita", "possibilità"),
+    ("liberta", "libertà"),
+    ("verita", "verità"),
+    ("attivita", "attività"),
+    ("societa", "società"),
+    ("difficolta", "difficoltà"),
+    ("novita", "novità"),
+    ("responsabilita", "responsabilità"),
+    ("necessita", "necessità"),
+    ("felicita", "felicità"),
+    ("realta", "realtà"),
+    ("volonta", "volontà"),
+    ("pubblicita", "pubblicità"),
+    ("sanita", "sanità"),
+    ("proprieta", "proprietà"),
+    ("identita", "identità"),
+    ("curiosita", "curiosità"),
+    ("personalita", "personalità"),
+    ("lunedi", "lunedì"),
+    ("martedi", "martedì"),
+    ("mercoledi", "mercoledì"),
+    ("giovedi", "giovedì"),
+    ("venerdi", "venerdì"),
+    // Frequent misspellings and words written together.
+    ("propio", "proprio"),
+    ("sopratutto", "soprattutto"),
+    ("putroppo", "purtroppo"),
+    ("pultroppo", "purtroppo"),
+    ("aereoporto", "aeroporto"),
+    ("eccezzione", "eccezione"),
+    ("qundo", "quando"),
+    ("daccordo", "d'accordo"),
+    ("perfavore", "per favore"),
+];
+
+/// Abbreviations after which an Italian sentence doesn't end (lowercase), on top of [`NOT_SENTENCE_END`].
+const NOT_SENTENCE_END_IT: &[&str] = &[
+    "sig.", "sigg.", "sig.ra", "dott.", "dott.ssa", "prof.", "prof.ssa", "ing.", "avv.", "geom.", "rag.", "arch.", "on.", "dr.", "pag.", "pagg.",
+    "art.", "artt.", "cfr.", "cap.", "tel.", "es.", "ecc.", "n.", "nn.", "vol.", "vv.", "sez.", "tab.", "fig.", "s.p.a.", "s.r.l.",
+];
+
 /// A built-in entry that is an English word (letters and apostrophes only), not a symbol.
 fn is_english_entry(from: &str) -> bool {
     from.chars().any(char::is_alphabetic) && from.chars().all(|c| c.is_alphabetic() || c == '\'')
@@ -88,6 +179,8 @@ pub struct AutoCorrectPrefs {
     pub caps_lock: bool,
     /// AutoFormat As You Type: "straight quotes" with “smart quotes”.
     pub smart_quotes: bool,
+    /// In Italian text, double quotes become «guillemets» instead of “curly quotes”.
+    pub guillemets: bool,
     /// Fractions (1/2) with fraction characters (½).
     pub fractions: bool,
     /// Ordinals (1st) with superscript.
@@ -125,6 +218,7 @@ impl Default for AutoCorrectPrefs {
             cap_days: true,
             caps_lock: true,
             smart_quotes: true,
+            guillemets: false,
             fractions: true,
             ordinals: true,
             dashes: true,
@@ -200,15 +294,48 @@ impl AutoCorrectPrefs {
             })
     }
 
+    /// The replacement for `word` in text of language `lang`: like [`Self::replacement_in`], and for
+    /// Italian text also the built-in Italian list ([`AUTOCORRECT_IT`]). An apostrophe typed curly
+    /// (smart quotes) matches a straight one in the list; the Italian replacements keep it curly.
+    pub fn replacement_lang(&self, word: &str, lang: wordcraft_proof::ProofLang) -> Option<String> {
+        use wordcraft_proof::ProofLang;
+        let norm = word.replace('\u{2019}', "'");
+        if let Some(r) = self.replacement_in(word, lang == ProofLang::En).or_else(|| self.replacement_in(&norm, lang == ProofLang::En)) {
+            return Some(r);
+        }
+        if lang != ProofLang::It {
+            return None;
+        }
+        let hidden = |a: &str| self.removed.iter().any(|r| r == a) || self.entries.iter().any(|(e, _)| e == a);
+        let list: Vec<(&str, &str)> = AUTOCORRECT_IT.iter().copied().filter(|(a, _)| !hidden(a)).collect();
+        // With smart quotes the text has curly apostrophes, so the replacement gets them too.
+        let curly = word.contains('\u{2019}') || self.smart_quotes;
+        lookup_cased(&list, &norm).map(|r| if curly { r.replace('\'', "\u{2019}") } else { r })
+    }
+
     /// The replacement list as the dialog shows it, sorted: `(from, to, built in)`.
     pub fn list(&self) -> Vec<(String, String, bool)> {
         let mut v: Vec<(String, String, bool)> = AUTOCORRECT
             .iter()
+            .chain(AUTOCORRECT_IT.iter())
             .filter(|(a, _)| !self.removed.iter().any(|r| r == a) && !self.entries.iter().any(|(e, _)| e == a))
             .map(|(a, b)| (a.to_string(), b.to_string(), true))
             .chain(self.entries.iter().map(|(a, b)| (a.clone(), b.clone(), false)))
             .collect();
         v.sort_by(|x, y| x.0.to_lowercase().cmp(&y.0.to_lowercase()).then(x.0.cmp(&y.0)));
+        v
+    }
+
+    /// The abbreviations of [`Self::exception_list`] plus the Italian ones for Italian text.
+    pub fn exception_list_for(&self, lang: wordcraft_proof::ProofLang) -> Vec<String> {
+        let mut v = self.exception_list();
+        if lang == wordcraft_proof::ProofLang::It {
+            v.extend(
+                NOT_SENTENCE_END_IT.iter().filter(|a| !self.exceptions_removed.iter().any(|r| r.eq_ignore_ascii_case(a))).map(|a| a.to_string()),
+            );
+            v.sort();
+            v.dedup();
+        }
         v
     }
 
@@ -224,6 +351,23 @@ impl AutoCorrectPrefs {
         v.dedup();
         v
     }
+}
+
+/// The entry of `list` for `word`: exactly, or a lowercase entry for a capitalised word ("Perche" →
+/// "Perché", "E'" → "È"), the replacement then starting with a capital too.
+fn lookup_cased(list: &[(&str, &str)], word: &str) -> Option<String> {
+    list.iter()
+        .find(|(a, _)| {
+            *a == word || (!a.chars().any(char::is_uppercase) && word.to_lowercase() == *a && word.chars().next().is_some_and(char::is_uppercase))
+        })
+        .map(|(a, b)| {
+            if *a != word && b.chars().next().is_some_and(char::is_lowercase) {
+                let mut c = b.chars();
+                c.next().map(|x| x.to_uppercase().chain(c).collect::<String>()).unwrap_or_default()
+            } else {
+                b.to_string()
+            }
+        })
 }
 
 /// Saved AutoCorrect options: anything that doesn't read as them reads as the defaults (a
@@ -245,6 +389,7 @@ fn autocorrect_options(s: &mut Session, v: &Value) -> CmdResult {
         ("capDays", &mut ac.cap_days),
         ("capsLock", &mut ac.caps_lock),
         ("smartQuotes", &mut ac.smart_quotes),
+        ("guillemets", &mut ac.guillemets),
         ("fractions", &mut ac.fractions),
         ("ordinals", &mut ac.ordinals),
         ("dashes", &mut ac.dashes),
@@ -275,7 +420,7 @@ fn autocorrect_options(s: &mut Session, v: &Value) -> CmdResult {
     if let Some(f) = p::str(v, "delete") {
         let n = ac.entries.len();
         ac.entries.retain(|(a, _)| a != f);
-        if AUTOCORRECT.iter().any(|(a, _)| *a == f) && !ac.removed.iter().any(|r| r == f) {
+        if AUTOCORRECT.iter().chain(AUTOCORRECT_IT.iter()).any(|(a, _)| *a == f) && !ac.removed.iter().any(|r| r == f) {
             ac.removed.push(f.to_string());
         } else if n == ac.entries.len() {
             return Err(CmdError::Params(format!("no AutoCorrect entry {f:?}")));
@@ -287,14 +432,18 @@ fn autocorrect_options(s: &mut Session, v: &Value) -> CmdResult {
             return Err(CmdError::Params("an exception is one abbreviation, like \"approx.\"".into()));
         }
         ac.exceptions_removed.retain(|r| *r != e);
-        if !NOT_SENTENCE_END.contains(&e.as_str()) && !ac.exceptions.contains(&e) && ac.exceptions.len() < MAX_ENTRIES {
+        if !NOT_SENTENCE_END.contains(&e.as_str())
+            && !NOT_SENTENCE_END_IT.contains(&e.as_str())
+            && !ac.exceptions.contains(&e)
+            && ac.exceptions.len() < MAX_ENTRIES
+        {
             ac.exceptions.push(e);
         }
     }
     if let Some(e) = p::str(v, "deleteException") {
         let e = e.trim().to_lowercase();
         ac.exceptions.retain(|r| *r != e);
-        if NOT_SENTENCE_END.contains(&e.as_str()) && !ac.exceptions_removed.contains(&e) {
+        if (NOT_SENTENCE_END.contains(&e.as_str()) || NOT_SENTENCE_END_IT.contains(&e.as_str())) && !ac.exceptions_removed.contains(&e) {
             ac.exceptions_removed.push(e);
         }
     }
@@ -324,6 +473,7 @@ fn autocorrect_options(s: &mut Session, v: &Value) -> CmdResult {
         "capDays": ac.cap_days,
         "capsLock": ac.caps_lock,
         "smartQuotes": ac.smart_quotes,
+        "guillemets": ac.guillemets,
         "fractions": ac.fractions,
         "ordinals": ac.ordinals,
         "dashes": ac.dashes,
@@ -751,6 +901,13 @@ fn macros(s: &mut Session, v: &Value) -> CmdResult {
     ))
 }
 
+/// The proofing language of the text at byte `off` of the paragraph at `f`: its run, style or the
+/// document's language, else the editing language, else English (#835).
+pub fn proof_lang_at(s: &Session, f: &Pos, off: usize) -> wordcraft_proof::ProofLang {
+    let tag = s.doc.para_at(f).and_then(|p| s.doc.styles.resolve_char(p.props.style.as_deref(), p.props_of_char(off)).lang);
+    wordcraft_proof::ProofLang::from_tag(tag.as_deref().or(s.editing_lang.as_deref()))
+}
+
 /// Apply AutoCorrect to the word just before the caret (called after typing a space/punctuation):
 /// replacements, then ordinal superscripts, web addresses as links and sentence capitals.
 pub fn autocorrect(s: &mut Session) -> Result<(), CmdError> {
@@ -801,12 +958,8 @@ pub fn autocorrect_word(s: &mut Session, on_enter: bool) -> Result<(), CmdError>
     // The word's language (run, paragraph style, document default) picks the list (#835).
     // Text with no language at all is in the editing language (a Polish interface writes Polish),
     // else English. Proofing decides what is English the same way.
-    let english = s.doc.para_at(&f).is_none_or(|p| {
-        let rc = s.doc.styles.resolve_char(p.props.style.as_deref(), p.props_of_char(start));
-        let lang = rc.lang.as_deref().or(s.editing_lang.as_deref());
-        wordcraft_proof::ProofLang::from_tag(lang) == wordcraft_proof::ProofLang::En
-    });
-    let found = if ac.replace_text { ac.replacement_in(&word, english) } else { None };
+    let lang = proof_lang_at(s, &f, start);
+    let found = if ac.replace_text { ac.replacement_lang(&word, lang) } else { None };
     let (from, rep) = match found {
         Some(r) => (start, Some(r)),
         None if ac.replace_text && word.len() > 3 && word.ends_with("...") => (start + word.len() - 3, Some("…".to_string())),
@@ -855,7 +1008,7 @@ pub fn autocorrect_word(s: &mut Session, on_enter: bool) -> Result<(), CmdError>
     let before_word = text.get(..start).unwrap_or("");
     // The first word in a table cell follows its own option; other sentences the sentence one.
     let sentence_on = if before_word.trim().is_empty() && f.path.cell().is_some() { ac.cap_cells } else { ac.cap_sentences };
-    let exceptions = ac.exception_list();
+    let exceptions = ac.exception_list_for(lang);
     // A replacement of several words ("brb" → "be right back") is capitalised by its first.
     let first = word.split_whitespace().next().unwrap_or("");
     let next = if first.len() < word.len() {

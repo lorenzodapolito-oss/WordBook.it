@@ -1140,3 +1140,136 @@ fn typing_after_a_citation_goes_outside_its_field() {
     let inside = Pos { off: f[0].start.off + wordcraft_doc::para::OBJ.len_utf8(), ..f[0].start.clone() };
     assert_eq!(s.doc.copy_range(&inside, &f[0].end).plain_text(), "(Smith 2020)");
 }
+
+/// A session whose document is written in Italian.
+fn italian() -> Session {
+    let mut s = s();
+    run(&mut s, "review.language", json!({"lang": "it-IT", "default": true}));
+    s
+}
+
+/// The built-in Italian replacements (`AUTOCORRECT_IT`) apply to Italian text only, as the English
+/// ones apply to English only; a curly apostrophe (smart quotes) matches the straight one.
+#[test]
+fn autocorrect_italian_list_applies_only_to_italian_text() {
+    for (typed_text, want) in [
+        ("Dico perchè no ", "Dico perché no "),
+        ("Dice che benche piova ", "Dice che benché piova "),
+        ("Vorrei un'altro caffe ", "Vorrei un altro caffè "),
+        ("Dice che qual'è la citta ", "Dice che qual è la città "),
+        ("E' tardi ", "È tardi "),
+        ("Dov'e il bagno ", "Dov’è il bagno "),
+        ("Un pò di pane ", "Un po’ di pane "),
+        ("Arrivo lunedi sera ", "Arrivo lunedì sera "),
+        ("Perche no? ", "Perché no? "),
+        ("Non è propio cosi ", "Non è proprio così "),
+    ] {
+        let mut s = italian();
+        typ(&mut s, typed_text);
+        assert_eq!(s.doc.plain_text(StoryRef::Body), want, "{typed_text:?}");
+    }
+    // The same slips in English or untagged text are left alone, and so are real Italian words
+    // that only look like an entry (the river Po, "pero" the pear tree).
+    let s = typed("We like perchè and citta here ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "We like perchè and citta here ");
+    let mut s = italian();
+    typ(&mut s, "Il Po e il pero sono qui ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Il Po e il pero sono qui ");
+    // Symbols still apply, and the English words don't ("dont" is not Italian).
+    let mut s = italian();
+    typ(&mut s, "Tutti (c) dont ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Tutti © dont ");
+}
+
+#[test]
+fn autocorrect_italian_entries_can_be_listed_deleted_and_switched_off() {
+    let mut s = italian();
+    let r = s.run("tools.autocorrect", &json!({})).unwrap();
+    let entries = r["entries"].as_array().unwrap();
+    assert!(entries.iter().any(|e| e["from"] == "perchè" && e["to"] == "perché" && e["builtIn"] == true), "listed with the others");
+    // Deleting a built-in Italian entry stops it, like an English one.
+    run(&mut s, "tools.autocorrect", json!({"delete": "perchè"}));
+    typ(&mut s, "Dico perchè no ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Dico perchè no ");
+    // A user's entry wins over a built-in one and applies in Italian.
+    let mut s = italian();
+    run(&mut s, "tools.autocorrect", json!({"add": {"from": "cioe", "to": "ovvero"}}));
+    typ(&mut s, "Dico cioe no ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Dico ovvero no ");
+    // Replace text off: nothing is replaced.
+    let mut s = italian();
+    run(&mut s, "tools.autocorrect", json!({"replaceText": false}));
+    typ(&mut s, "Dico perchè no ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Dico perchè no ");
+}
+
+/// Italian abbreviations ("sig.", "dott.") don't end a sentence, so the next word keeps its case.
+#[test]
+fn autocorrect_italian_abbreviations_do_not_end_a_sentence() {
+    let mut s = italian();
+    typ(&mut s, "Scrisse al sig. rossi e al dott. bianchi ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Scrisse al sig. rossi e al dott. bianchi ");
+    // In English text "sig." is an ordinary word and a full stop ends the sentence.
+    let s = typed("He wrote to sig. rossi ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "He wrote to sig. Rossi ");
+    // The user can delete a built-in abbreviation like the English ones.
+    let mut s = italian();
+    run(&mut s, "tools.autocorrect", json!({"deleteException": "sig."}));
+    typ(&mut s, "Scrisse al sig. rossi ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Scrisse al sig. Rossi ");
+}
+
+/// "Use « » in Italian text": double quotes become guillemets in Italian only, and only when asked.
+#[test]
+fn autocorrect_guillemets_for_italian_double_quotes() {
+    let mut s = italian();
+    typ(&mut s, "Disse \"ciao\" a tutti ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Disse “ciao” a tutti ", "off by default");
+    let mut s = italian();
+    run(&mut s, "tools.autocorrect", json!({"guillemets": true}));
+    typ(&mut s, "Disse \"ciao\" a tutti ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Disse «ciao» a tutti ");
+    let r = s.run("tools.autocorrect", &json!({})).unwrap();
+    assert_eq!(r["guillemets"], true);
+    // After a word with an accent the closing guillemet still comes out right.
+    let mut s = italian();
+    run(&mut s, "tools.autocorrect", json!({"guillemets": true}));
+    typ(&mut s, "Ha detto \"è già\" ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Ha detto «è già» ");
+    // English text keeps its curly quotes with the option on; smart quotes off keeps straight ones.
+    let mut s = self::s();
+    run(&mut s, "tools.autocorrect", json!({"guillemets": true}));
+    typ(&mut s, "He said \"hi\" ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "He said “hi” ");
+    let mut s = italian();
+    run(&mut s, "tools.autocorrect", json!({"guillemets": true, "smartQuotes": false}));
+    typ(&mut s, "Disse \"ciao\" ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "Disse \"ciao\" ");
+}
+
+/// A synthetic MyThes file (our own words): the real Italian one is LGPL, read from the system.
+const MYTHES_SAMPLE: &str = "UTF-8\nbello|2\n(agg.)|grazioso|piacevole\n(agg. Elegante)|elegante|raffinato\ncasa|1\n(s.f.)|abitazione|dimora\n";
+
+#[test]
+fn thesaurus_reads_the_installed_italian_file_and_keeps_the_words_case() {
+    wordcraft_proof::thesaurus::install_italian(MYTHES_SAMPLE.as_bytes());
+    let mut s = italian();
+    let r = s.run("review.thesaurus", &json!({"word": "Bello", "lang": "it-IT"})).unwrap();
+    assert_eq!((r["language"].as_str(), r["available"].as_bool()), (Some("it"), Some(true)));
+    assert_eq!(r["synonyms"], json!(["Grazioso", "Piacevole", "Elegante", "Raffinato"]), "capital kept");
+    assert_eq!(r["meanings"][1]["label"], "agg. Elegante");
+    let r = s.run("review.thesaurus", &json!({"word": "BELLO", "lang": "it"})).unwrap();
+    assert_eq!(r["synonyms"][0], "GRAZIOSO");
+    // The word at the caret, in its inflected form, in Italian text.
+    typ(&mut s, "la bella casa");
+    let r = s.run("review.thesaurus", &json!({})).unwrap();
+    assert_eq!((r["word"].as_str(), r["synonyms"][0].as_str()), (Some("casa"), Some("abitazione")));
+    // An unknown word has no synonyms (the thesaurus itself is there).
+    let r = s.run("review.thesaurus", &json!({"word": "zzz", "lang": "it-IT"})).unwrap();
+    assert_eq!((r["synonyms"].as_array().map(Vec::len), r["available"].as_bool()), (Some(0), Some(true)));
+    // English keeps its small built-in list, and the thesaurus doesn't answer for it.
+    let r = s.run("review.thesaurus", &json!({"word": "Good", "lang": "en-US"})).unwrap();
+    assert_eq!(r["language"], "en");
+    assert_eq!(r["synonyms"][0], "Fine");
+    assert!(s.run("review.thesaurus", &json!({"word": "bello", "lang": "en-US"})).unwrap()["synonyms"].as_array().is_some_and(|a| a.is_empty()));
+}
