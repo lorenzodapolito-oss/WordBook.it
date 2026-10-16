@@ -35,6 +35,13 @@ use catalog::Catalog;
 /// The `language` setting that follows the system.
 pub const AUTO: &str = "auto";
 
+/// The `language` setting a fresh install starts with: Italian (new documents are then written in
+/// Italian too, see [`LangInfo::editing_lang`]). Saved settings keep whatever the person chose.
+/// Tests keep following the system (English), because they drive the UI by its English labels.
+pub fn default_pref() -> &'static str {
+    if cfg!(test) { AUTO } else { "it" }
+}
+
 /// One supported interface language.
 pub struct LangInfo {
     /// BCP 47 code, lowercase (`ja`, `zh-hans`). Also the `language` setting's value.

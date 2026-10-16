@@ -387,7 +387,8 @@ impl Tokens {
             hover: Color32::from_rgb(0xE6, 0xEE, 0xE4), // light sage
             pressed: Color32::from_rgb(0xD6, 0xE0, 0xD4),
             checked: Color32::from_rgb(0xD6, 0xE4, 0xD4),
-            accent: Color32::from_rgb(0x6B, 0x8E, 0x6B), // dark sage
+            // Sage, darkened from #6B8E6B so white on it reaches 4.5:1 (it was 3.68:1).
+            accent: Color32::from_rgb(0x5B, 0x7D, 0x5B),
             accent_text: Color32::from_rgb(0x4A, 0x6B, 0x4A),
             on_accent: Color32::WHITE,
             input: Color32::WHITE,
@@ -965,6 +966,9 @@ mod tests {
     #[test]
     fn get_for_selects_the_soft_palette() {
         let ctx = egui::Context::default();
+        // A fresh egui context is dark: pin it to the light theme like `apply` does for Light.
+        super::apply(&ctx, super::Appearance::Light);
+        ctx.set_theme(egui::Theme::Light);
         let soft = super::Tokens::get_for(&ctx, super::Appearance::Soft);
         assert_eq!(soft.text, super::Tokens::soft().text);
         let light = super::Tokens::get_for(&ctx, super::Appearance::Light);

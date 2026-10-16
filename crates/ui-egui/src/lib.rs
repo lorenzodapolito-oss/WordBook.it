@@ -354,7 +354,7 @@ impl Default for UiState {
             show_discord: true,
             author: String::new(),
             window: None,
-            language: i18n::AUTO.into(),
+            language: i18n::default_pref().into(),
             editing: wordcraft_engine::Prefs::default(),
             read_aloud_rate: 1.0,
             read_aloud_skip_citations: true,
