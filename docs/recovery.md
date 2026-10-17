@@ -21,6 +21,13 @@ disabled for that session. Removing the password allows future recovery again.
 
 Copies live in `recovery/` under the app's profile folder. `WORDCRAFT_PROFILE_DIR` selects a
 separate profile for isolated runs, including preferences, logs and control keys.
+
+**Portable mode.** A folder named `wordbook-data` next to the program holds the whole profile
+instead of the user's: preferences (`ui.json`, with the recent files), the personal dictionary,
+fonts, `recovery/`, `logs/` and the control key. Dictionaries (`it_IT.aff`, `it_IT.dic`,
+`th_it_IT_v2.dat`, …) are read from `wordbook-data/dictionaries` first, then from a plain
+`dictionaries` folder beside the program, before the usual system places. There is no switch to
+set: create the folder to turn it on, delete it to go back to the user's profile.
 `WORDCRAFT_NO_PREFS` disables recovery as well as preferences. Headless engine/CLI sessions
 and the browser do not create recovery files implicitly.
 

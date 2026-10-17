@@ -26,6 +26,16 @@ pub fn set_dictionary_dir(dir: Option<PathBuf>) {
     *EXTRA_DIR.write().unwrap_or_else(|e| e.into_inner()) = dir;
 }
 
+/// Name of the portable data folder next to the program (the same as `wordcraft-control-key`'s
+/// `PORTABLE_DIR`, which holds the preferences too; this crate doesn't depend on it).
+const PORTABLE_DIR: &str = "wordbook-data";
+
+/// Dictionary folders that travel with the program in `exe_dir`: `wordbook-data/dictionaries`,
+/// then a plain `dictionaries` folder beside it. Only the ones that exist.
+pub(crate) fn portable_dirs_in(exe_dir: &Path) -> Vec<PathBuf> {
+    [exe_dir.join(PORTABLE_DIR).join("dictionaries"), exe_dir.join("dictionaries")].into_iter().filter(|d| d.is_dir()).collect()
+}
+
 /// The LibreOffice extension directories a Hunspell dictionary name may live in: LibreOffice's
 /// IDs are per dictionary — Polish is `dict-pl`, Brazilian Portuguese `dict-pt-BR` — so both
 /// the primary-language folder and the dashed full name are tried.
@@ -49,6 +59,9 @@ pub fn search_dirs(lo_exts: Option<&[String]>) -> Vec<PathBuf> {
     }
     if let Some(d) = std::env::var_os("WORDCRAFT_DICTIONARIES").filter(|v| !v.is_empty()) {
         dirs.push(PathBuf::from(d));
+    }
+    if let Some(exe_dir) = std::env::current_exe().ok().and_then(|e| e.parent().map(Path::to_path_buf)) {
+        dirs.extend(portable_dirs_in(&exe_dir));
     }
     // LibreOffice keeps each language under `…/share/extensions/<dict-xx>`.
     let lo_dirs =
@@ -171,6 +184,19 @@ pub fn decode(aff: &[u8], dic: &[u8]) -> Result<(String, String), String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn dictionaries_next_to_the_program_are_searched() {
+        use super::*;
+        let exe_dir = std::env::temp_dir().join(format!("wordbook-dict-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&exe_dir);
+        std::fs::create_dir_all(&exe_dir).unwrap();
+        assert!(portable_dirs_in(&exe_dir).is_empty());
+        std::fs::create_dir_all(exe_dir.join("dictionaries")).unwrap();
+        std::fs::create_dir_all(exe_dir.join(PORTABLE_DIR).join("dictionaries")).unwrap();
+        assert_eq!(portable_dirs_in(&exe_dir), [exe_dir.join(PORTABLE_DIR).join("dictionaries"), exe_dir.join("dictionaries")]);
+        let _ = std::fs::remove_dir_all(&exe_dir);
+    }
+
     use super::*;
 
     #[test]

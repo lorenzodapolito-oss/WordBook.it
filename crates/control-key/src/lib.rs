@@ -3,13 +3,34 @@
 
 use std::path::{Path, PathBuf};
 
-/// The app's settings folder (preferences, logs, key files): macOS
-/// `~/Library/Application Support/WordCraft`, Windows `%APPDATA%\WordCraft`, otherwise
-/// `$XDG_CONFIG_HOME/wordcraft` or `~/.config/wordcraft`.
+/// Name of the folder that makes the app portable: when it sits next to the program, everything
+/// the app keeps (preferences, personal dictionary, fonts, recovery copies, logs, key files and
+/// the `dictionaries` folder) lives in it instead of the user's profile. The Hunspell search in
+/// `wordcraft-proof` looks for the same name.
+pub const PORTABLE_DIR: &str = "wordbook-data";
+
+/// The portable data folder for a program in `exe_dir`: `exe_dir/wordbook-data`, only when it
+/// exists (creating the folder is how portable mode is switched on).
+pub fn portable_dir_in(exe_dir: &Path) -> Option<PathBuf> {
+    let dir = exe_dir.join(PORTABLE_DIR);
+    dir.is_dir().then_some(dir)
+}
+
+/// [`portable_dir_in`] for the running program's own folder.
+pub fn portable_dir() -> Option<PathBuf> {
+    portable_dir_in(std::env::current_exe().ok()?.parent()?)
+}
+
+/// The app's settings folder (preferences, logs, key files): the [`PORTABLE_DIR`] folder next to
+/// the program when there is one, else macOS `~/Library/Application Support/WordCraft`, Windows
+/// `%APPDATA%\WordCraft`, otherwise `$XDG_CONFIG_HOME/wordcraft` or `~/.config/wordcraft`.
 /// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs.
 pub fn settings_dir() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("WORDCRAFT_PROFILE_DIR").filter(|p| !p.is_empty()) {
         return Some(PathBuf::from(path));
+    }
+    if let Some(dir) = portable_dir() {
+        return Some(dir);
     }
     if cfg!(target_os = "macos") {
         std::env::var_os("HOME").map(|h| PathBuf::from(h).join("Library/Application Support/WordCraft"))
@@ -75,6 +96,20 @@ mod tests {
         if instance_id().is_none() {
             assert_eq!(key_path(dir, 7981), dir.join("control-key.local-7981"));
         }
+    }
+
+    #[test]
+    fn a_data_folder_next_to_the_program_makes_it_portable() {
+        let exe_dir = std::env::temp_dir().join(format!("wordbook-portable-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&exe_dir);
+        std::fs::create_dir_all(&exe_dir).unwrap();
+        assert_eq!(portable_dir_in(&exe_dir), None, "no folder, not portable");
+        std::fs::write(exe_dir.join(PORTABLE_DIR), b"a file is not a folder").unwrap();
+        assert_eq!(portable_dir_in(&exe_dir), None, "a file of that name doesn't count");
+        std::fs::remove_file(exe_dir.join(PORTABLE_DIR)).unwrap();
+        std::fs::create_dir(exe_dir.join(PORTABLE_DIR)).unwrap();
+        assert_eq!(portable_dir_in(&exe_dir), Some(exe_dir.join(PORTABLE_DIR)));
+        let _ = std::fs::remove_dir_all(&exe_dir);
     }
 
     #[test]
