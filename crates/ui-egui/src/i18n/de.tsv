@@ -16,7 +16,7 @@
 	1.5 Line Spacing	Zeilenabstand 1,5
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Ein kostenloses, quelloffenes Textverarbeitungsprogramm, von Grund auf in Rust geschrieben.\nTeil der Crafting Apps des ArtCraft-Teams.
 	About	Info
-	About WordCraft	Über WordCraft
+	About WordBook.it	Über WordBook.it
 	Accept	Annehmen
 	Accept All Changes	Alle Änderungen annehmen
 	Accept This Change	Diese Änderung annehmen
@@ -891,7 +891,7 @@
 	Word Left	Wort nach links
 	Word Right	Wort nach rechts
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	Words	Wörter
 	Words only	Nur Wörter
 	Wrap Text	Text umbrechen

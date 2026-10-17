@@ -21,7 +21,7 @@
 	1.5 Line Spacing	Междуредие 1,5
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Безплатен текстообработващ редактор с отворен код, написан от нулата на Rust.\nЧаст от Crafting Apps на екипа на ArtCraft.
 	About	Относно
-	About WordCraft	За WordCraft
+	About WordBook.it	За WordBook.it
 	Accept	Приемане
 	Accept All Changes	Приемане на всички промени
 	Accept This Change	Приемане на тази промяна
@@ -921,7 +921,7 @@
 	Word Right	Дума надясно
 	Word document (*.docx)	Документ на Word (*.docx)
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	Words	Думи
 	Words only	Само думи
 	Wrap Text	Обтичане на текста

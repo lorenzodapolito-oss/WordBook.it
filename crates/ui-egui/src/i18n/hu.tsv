@@ -20,7 +20,7 @@
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Ingyenes, nyílt forráskódú szövegszerkesztő, az alapoktól Rustban írva.\nA Crafting Apps családba tartozik, az ArtCraft csapatától.
 	AaBbCcDd	AaÁáBbCc
 	About	Névjegy
-	About WordCraft	A WordCraft névjegye
+	About WordBook.it	A WordBook.it névjegye
 	Accept	Elfogadás
 	Accept All Changes	Összes módosítás elfogadása
 	Accept This Change	E módosítás elfogadása
@@ -823,7 +823,7 @@
 	Word Left	Szó balra
 	Word Right	Szó jobbra
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	Words	Szavak
 	Words only	Csak szavak
 	Wrap Text	Szöveg körbefuttatása

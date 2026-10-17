@@ -13,7 +13,7 @@
 	1.5 Line Spacing	Reavahe 1,5
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Tasuta avatud lähtekoodiga tekstitöötlusprogramm, mis on kirjutatud Rustis.\nArtCrafti meeskonna Crafting Appsi osa.
 	About	Teave
-	About WordCraft	WordCrafti teave
+	About WordBook.it	WordBook.iti teave
 	Accept	Nõustu
 	Accept All Changes	Nõustu kõigi muudatustega
 	Accept This Change	Nõustu selle muudatusega
@@ -889,7 +889,7 @@
 	Word XML Document (*.xml)	Wordi XML-dokument (*.xml)
 	Word 2003 XML Document (*.xml)	Word 2003 XML-dokument (*.xml)
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	Words	Sõnad
 	Words only	Ainult sõnad
 	Wrap Text	Mähi tekst

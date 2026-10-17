@@ -17,7 +17,7 @@
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Rust ile sıfırdan yazılmış ücretsiz, açık kaynak bir kelime işlemci.\nArtCraft ekibinin Crafting Apps ailesinin bir parçası.
 	AaBbCcDd	AaBbCcÇç
 	About	Hakkında
-	About WordCraft	WordCraft Hakkında
+	About WordBook.it	WordBook.it Hakkında
 	Accept	Kabul Et
 	Accept All Changes	Tüm Değişiklikleri Kabul Et
 	Accept This Change	Bu Değişikliği Kabul Et
@@ -837,7 +837,7 @@ preview	Title	Örnek
 	Word Left	Önceki Sözcük
 	Word Right	Sonraki Sözcük
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	Words	Sözcükler
 	Words only	Yalnızca sözcükler
 	Wrap Text	Metni Kaydır

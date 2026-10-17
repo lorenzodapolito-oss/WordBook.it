@@ -401,6 +401,15 @@ impl UiState {
     }
 }
 
+/// The app's name as shown in window titles, and whose copy it is.
+pub const APP_NAME: &str = "WordBook.it";
+pub const APP_OWNER: &str = "Lorenzo D'Apolito";
+
+/// The name shown in the title bar and the window title: "WordBook.it di Lorenzo D'Apolito".
+pub fn app_title() -> String {
+    format!("{APP_NAME} di {APP_OWNER}")
+}
+
 /// Settings saved before #838 kept the measurement unit as `editing.units`, which defaulted to
 /// inches; it now lives in `editing.measurementUnits`, and no value there follows the region. A
 /// unit other than inches under the old key was the user's own choice, so it carries over (an
@@ -2034,9 +2043,9 @@ impl WordApp {
             ctx.open_url(egui::OpenUrl::new_tab(url));
         }
         let title = if self.has_document() {
-            format!("{}{} - WordCraft", self.title_stem(), if self.session.dirty { " •" } else { "" })
+            format!("{}{} - {}", self.title_stem(), if self.session.dirty { " •" } else { "" }, app_title())
         } else {
-            "WordCraft".to_string()
+            app_title()
         };
         if title != self.sent_title {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
@@ -2455,6 +2464,18 @@ mod tests {
     use super::*;
     use egui_kittest::kittest::Queryable;
 
+    /// The program and the repository share one name, and the title carries whose copy it is:
+    /// "Documento1 - WordBook.it di Lorenzo D'Apolito".
+    #[test]
+    fn the_window_title_names_the_app_and_its_owner() {
+        assert_eq!(app_title(), "WordBook.it di Lorenzo D'Apolito");
+        let a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("x")), Default::default());
+        let mut h = harness(a);
+        h.run_steps(4);
+        let a = h.state();
+        assert!(a.sent_title.ends_with(" - WordBook.it di Lorenzo D'Apolito"), "{}", a.sent_title);
+    }
+
     fn mod_key(key: egui::Key) -> egui::Event {
         egui::Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::COMMAND }
     }
@@ -2579,7 +2600,7 @@ mod tests {
             app(),
         );
         h.run_steps(6);
-        h.get_by_label("Document1 — Not saved").click();
+        h.get_by_label(&format!("Document1 — Not saved — {}", app_title())).click();
         h.run_steps(2);
         assert_eq!(h.state().dialog.as_ref().map(|d| d.name()), Some("renameDocument"));
         h.get_by_role_and_label(egui::accesskit::Role::Button, "Rename").click();
@@ -2587,7 +2608,7 @@ mod tests {
         assert!(h.state().dialog.is_none());
         assert!(h.state().session.file_name.is_none());
         assert!(!h.state().session.dirty);
-        h.get_by_label("Document1 — Not saved").click();
+        h.get_by_label(&format!("Document1 — Not saved — {}", app_title())).click();
         h.run_steps(2);
         h.event(egui::Event::Key {
             key: egui::Key::A,
@@ -2609,7 +2630,7 @@ mod tests {
         let long_name = "Notes ".repeat(25);
         h.state_mut().run("file.rename", json!({"name": long_name})).unwrap();
         h.run_steps(2);
-        h.get_by_label(&format!("{} — Not saved", long_name.trim())).click();
+        h.get_by_label(&format!("{} — Not saved — {}", long_name.trim(), app_title())).click();
         h.run_steps(2);
         assert!(h.state().dialog.is_some());
         h.event(egui::Event::Key { key: egui::Key::Escape, physical_key: None, pressed: true, repeat: false, modifiers: Default::default() });
@@ -2700,7 +2721,7 @@ mod tests {
         let a = h.state_mut();
         assert!(!a.ui.backstage, "Esc leaves the Start screen");
         assert!(!a.has_document(), "for an empty window, not a blank document");
-        assert_eq!(a.sent_title, "WordCraft", "the window is titled with the app alone");
+        assert_eq!(a.sent_title, app_title(), "the window is titled with the app alone");
         // The ribbon's commands are off, but Help, the File tab and the settings work.
         for id in ["format.bold", "text.insert", "file.save", "file.saveAs", "file.print", "edit.paste", "insert.table", "ui.print"] {
             assert!(!widgets::enabled(a, id), "{id} is off with no document");

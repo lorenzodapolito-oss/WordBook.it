@@ -5,7 +5,7 @@
 	1.5 Line Spacing	1.5줄 간격
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Rust로 처음부터 새로 만든 무료 오픈 소스 워드 프로세서입니다.\nArtCraft 팀의 Crafting Apps 제품군에 속합니다.
 	About	정보
-	About WordCraft	WordCraft 정보
+	About WordBook.it	WordBook.it 정보
 	Accept	수락
 	Accept All Changes	모든 변경 내용 수락
 	Accept This Change	이 변경 내용 수락
@@ -970,7 +970,7 @@
 	Word Left	이전 단어로 이동
 	Word Right	다음 단어로 이동
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	Words	단어
 	Words only	단어만
 	Wrap Text	텍스트 줄 바꿈

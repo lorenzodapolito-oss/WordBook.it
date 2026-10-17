@@ -18,7 +18,7 @@
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Бесплатный текстовый процессор с открытым исходным кодом, написанный с нуля на Rust.\nВходит в Crafting Apps от команды ArtCraft.
 	AaBbCcDd	АаБбВвГг
 	About	О программе
-	About WordCraft	О WordCraft
+	About WordBook.it	О WordBook.it
 	Accept	Принять
 	Accept All Changes	Принять все изменения
 	Accept This Change	Принять это изменение
@@ -830,7 +830,7 @@ preview	Title	Пример
 	Word Left	На слово влево
 	Word Right	На слово вправо
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	Words	Слова
 	Words only	Только слова
 	Wrap Text	Обтекание текстом

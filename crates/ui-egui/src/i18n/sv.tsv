@@ -19,7 +19,7 @@
 	1.5 Line Spacing	Radavstånd 1,5
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	En gratis ordbehandlare med öppen källkod, skriven från grunden i Rust.\nEn del av Crafting Apps från ArtCraft-teamet.
 	About	Om
-	About WordCraft	Om WordCraft
+	About WordBook.it	Om WordBook.it
 	Accept	Acceptera
 	Accept All Changes	Acceptera alla ändringar
 	Accept This Change	Acceptera den här ändringen
@@ -1001,7 +1001,7 @@
 	Word document (*.docx)	Word-dokument (*.docx)
 	Word XML Document (*.xml)	Word XML-dokument (*.xml)
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	WordCraft is now the default app for Word documents.	WordCraft är nu standardprogram för Word-dokument.
 	Words	Ord
 	Words only	Bara ord

@@ -22,7 +22,7 @@
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Бесплатан, отворени обрађивач текста написан од нуле у Rust-у.\nДео Crafting Apps пакета тима ArtCraft.
 	A password is required to open this document.	За отварање овог документа потребна је лозинка.
 	About	О програму
-	About WordCraft	О WordCraft-у
+	About WordBook.it	О WordBook.it-у
 	Accept	Прихвати
 	Accept All Changes	Прихвати све измене
 	Accept This Change	Прихвати ову измену
@@ -1028,7 +1028,7 @@
 	Word Left	Реч лево
 	Word Right	Реч десно
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	Words	Речи
 	Words only	Само речи
 	Wrap Text	Преломи текст

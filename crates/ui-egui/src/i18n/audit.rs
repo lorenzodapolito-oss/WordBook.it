@@ -152,7 +152,8 @@ impl Exempt {
 
     fn allows(&self, app: &WordApp, text: &str) -> bool {
         let plain = pseudo::unmarked(text);
-        let plain = plain.trim().trim_end_matches(" —").trim();
+        // The title bar ends with the app's name and owner, which are not translated.
+        let plain = plain.trim().trim_end_matches(format!("— {}", crate::app_title()).as_str()).trim().trim_end_matches(" —").trim();
         let is_shortcut =
             || plain.split('+').all(|k| matches!(k, "Ctrl" | "Shift" | "Alt" | "Cmd" | "Esc" | "Tab" | "Enter") || k.chars().count() <= 3);
         // A command's error message in the status bar: commands answer scripts and MCP too, so
@@ -172,7 +173,7 @@ impl Exempt {
             || plain.starts_with('@') // contributor handles
             || plain.starts_with("Style") || plain.starts_with("Table Style ") // a new style's default name
             || plain.contains('┬') || plain.contains('\u{2061}') // equation input (UnicodeMath), drawn as math
-            || matches!(plain, "WordCraft" | "WordCraft User" | "Discord" | "https://" | "auto" | "I. II. III." | "i. ii. iii.")
+            || matches!(plain, "WordCraft" | "WordBook.it" | "WordCraft User" | "Discord" | "https://" | "auto" | "I. II. III." | "i. ii. iii.")
             || plain == "CONFIDENTIAL" // the watermark dialog's text: document content, kept as typed
             || plain == "Figure 1" // the caption dialog's sample: the label goes into the document as is
     }

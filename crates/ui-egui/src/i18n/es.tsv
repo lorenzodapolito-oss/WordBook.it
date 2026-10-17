@@ -18,7 +18,7 @@
 	1.5 Line Spacing	Interlineado 1,5
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Un procesador de textos gratuito y de código abierto, escrito desde cero en Rust.\nForma parte de las Crafting Apps del equipo de ArtCraft.
 	About	Acerca de
-	About WordCraft	Acerca de WordCraft
+	About WordBook.it	Acerca de WordBook.it
 	Accept	Aceptar
 	Accept All Changes	Aceptar todos los cambios
 	Accept This Change	Aceptar este cambio
@@ -1011,7 +1011,7 @@
 	Word XML Document (*.xml)	Documento XML de Word (*.xml)
 	Word 2003 XML Document (*.xml)	Documento XML de Word 2003 (*.xml)
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	WordCraft is now the default app for Word documents.	WordCraft es ahora la aplicación predeterminada para los documentos de Word.
 	Words	Palabras
 	Words only	Solo palabras

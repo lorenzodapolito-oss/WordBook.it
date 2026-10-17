@@ -21,7 +21,7 @@
 	1.5 Line Spacing	Giãn dòng 1,5
 	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Trình xử lý văn bản miễn phí, mã nguồn mở được viết từ đầu bằng Rust.\nMột phần trong bộ ứng dụng Crafting Apps của đội ngũ ArtCraft.
 	About	Giới thiệu
-	About WordCraft	Giới thiệu về WordCraft
+	About WordBook.it	Giới thiệu về WordBook.it
 	Accept	Chấp nhận
 	Accept All Changes	Chấp nhận tất cả thay đổi
 	Accept This Change	Chấp nhận thay đổi này
@@ -913,7 +913,7 @@
 	Word Right	Đưa con trỏ sang phải một từ
 	Word document (*.docx)	Tài liệu Word (*.docx)
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordBook.it	WordBook.it
 	Words	Từ
 	Words only	Chỉ gạch chân từ
 	Wrap Text	Văn bản quanh đối tượng

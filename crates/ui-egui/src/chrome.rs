@@ -347,10 +347,10 @@ pub fn title_bar(app: &mut WordApp, ui: &mut Ui) {
             // Centred title.
             let title = if !app.has_document() {
                 // No document open (#1129): the app's name alone.
-                "WordCraft".to_string()
+                crate::app_title()
             } else {
                 format!(
-                    "{} — {}",
+                    "{} — {} — {}",
                     app.title_stem(),
                     if app.session.dirty {
                         tl!("Edited")
@@ -358,7 +358,8 @@ pub fn title_bar(app: &mut WordApp, ui: &mut Ui) {
                         tl!("Saved")
                     } else {
                         tl!("Not saved")
-                    }
+                    },
+                    crate::app_title()
                 )
             };
             let font = TypeRung::Chrome.semibold();
