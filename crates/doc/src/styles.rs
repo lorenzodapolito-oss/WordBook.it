@@ -421,8 +421,9 @@ pub struct TableStyleProps {
 }
 
 /// The only styles the Styles gallery, the Styles pane and Manage Styles offer, in display order
-/// (style ids). Italian names: Normale, Titolo, Titolo 1, Titolo 2, Sottotitolo, Citazione, Enfasi.
-pub const CURATED_STYLES: [&str; 7] = ["Normal", "Title", "Heading1", "Heading2", "Subtitle", "Quote", "Emphasis"];
+/// (style ids). Italian names: Normale, Titolo, Titolo 1, Titolo 2, Sottotitolo, Citazione, Enfasi,
+/// Testo nota a piè di pagina.
+pub const CURATED_STYLES: [&str; 8] = ["Normal", "Title", "Heading1", "Heading2", "Subtitle", "Quote", "Emphasis", "FootnoteText"];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]

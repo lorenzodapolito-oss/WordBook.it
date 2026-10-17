@@ -2242,3 +2242,9 @@
 # Reading Mode column widths (#1040)
 	Narrow	Étroite
 	Medium	Moyenne
+	Looked up:	Recherché :
+	There is no thesaurus for this language.	Il n'y a pas de dictionnaire des synonymes pour cette langue.
+	No synonyms found for this word.	Aucun synonyme trouvé pour ce mot.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Le fichier de synonymes (th_it_IT_v2.dat) est introuvable. Placez-le dans le dossier des dictionnaires.
+	Double-click a synonym to look it up.	Double-cliquez sur un synonyme pour le rechercher.
+	Thesaurus…	Synonymes…

@@ -4561,7 +4561,7 @@ fn manage_styles_lists_only_the_curated_styles_in_fixed_order() {
     assert_eq!(alpha, rec, "the curated order does not depend on `sort`");
     let list = rec.as_array().unwrap();
     let names: Vec<&str> = list.iter().map(|x| x["name"].as_str().unwrap()).collect();
-    assert_eq!(names, ["Normal", "Title", "Heading 1", "Heading 2", "Subtitle", "Quote", "Emphasis"]);
+    assert_eq!(names, ["Normal", "Title", "Heading 1", "Heading 2", "Subtitle", "Quote", "Emphasis", "Footnote Text"]);
     let find = |name: &str| list.iter().find(|x| x["name"] == name).unwrap_or_else(|| panic!("{name} listed"));
     assert_eq!(find("Normal")["type"], "paragraph");
     assert_eq!(find("Normal")["builtIn"], true);

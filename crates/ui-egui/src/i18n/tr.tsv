@@ -2631,3 +2631,9 @@ preview	Title	Örnek
 # Reading Mode column widths (#1040)
 	Narrow	Dar
 	Medium	Orta
+	Looked up:	Aranan:
+	There is no thesaurus for this language.	Bu dil için eş anlamlılar sözlüğü yok.
+	No synonyms found for this word.	Bu sözcük için eş anlamlı bulunamadı.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Eş anlamlılar dosyası (th_it_IT_v2.dat) bulunamadı. Sözlükler klasörüne koyun.
+	Double-click a synonym to look it up.	Aramak için bir eş anlamlıya çift tıklayın.
+	Thesaurus…	Eş anlamlılar…

@@ -2269,3 +2269,9 @@
 # Reading Mode column widths (#1040)
 	Narrow	Kitsas
 	Medium	Keskmine
+	Looked up:	Otsiti:
+	There is no thesaurus for this language.	Sellele keelele pole sünonüümisõnastikku.
+	No synonyms found for this word.	Sellele sõnale ei leitud sünonüüme.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Sünonüümifaili (th_it_IT_v2.dat) ei leitud. Pane see sõnastike kausta.
+	Double-click a synonym to look it up.	Topeltklõpsa sünonüümil, et seda otsida.
+	Thesaurus…	Sünonüümid…

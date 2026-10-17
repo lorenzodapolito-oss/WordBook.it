@@ -2247,3 +2247,9 @@
 # Reading Mode column widths (#1040)
 	Narrow	Вузька
 	Medium	Середня
+	Looked up:	Шукано:
+	There is no thesaurus for this language.	Для цієї мови немає словника синонімів.
+	No synonyms found for this word.	Для цього слова синонімів не знайдено.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Файл синонімів (th_it_IT_v2.dat) не знайдено. Покладіть його в теку словників.
+	Double-click a synonym to look it up.	Двічі клацніть синонім, щоб знайти його.
+	Thesaurus…	Синоніми…

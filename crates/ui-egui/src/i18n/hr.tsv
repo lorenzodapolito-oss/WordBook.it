@@ -2634,3 +2634,9 @@ preview	Title	Naslov
 	Bottom Right Cell	Donja desna ćelija
 	Inside Horizontal Border	Unutarnji vodoravni obrub
 	Inside Vertical Border	Unutarnji okomiti obrub
+	Looked up:	Traženo:
+	There is no thesaurus for this language.	Za ovaj jezik nema rječnika sinonima.
+	No synonyms found for this word.	Nisu pronađeni sinonimi za ovu riječ.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Datoteka sinonima (th_it_IT_v2.dat) nije pronađena. Stavite je u mapu rječnika.
+	Double-click a synonym to look it up.	Dvaput kliknite sinonim da ga potražite.
+	Thesaurus…	Sinonimi…

@@ -2323,6 +2323,8 @@ fn input_dialog(id: &str, params: &Value) -> Option<&'static str> {
         "review.restrict" | "file.protect" if params.as_object().is_none_or(|m| m.is_empty()) => Some("restrictEditing"),
         "insert.bookmark" | "insert.deleteBookmark" if !has("name") => Some("bookmark"),
         // Word Count from the keyboard or command search shows its dialog, as the ribbon does.
+        // Thesaurus (Shift+F7, the button) shows its dialog; with a `word` it just answers.
+        "review.thesaurus" if params.as_object().is_none_or(|m| m.is_empty()) => Some("thesaurus"),
         "review.wordCount" if params.as_object().is_none_or(|m| m.is_empty()) => Some("wordCount"),
         // Content control Properties without settings shows the dialog.
         "developer.properties" if params.as_object().is_none_or(|m| m.is_empty()) => Some("controlProperties"),
@@ -6035,6 +6037,26 @@ mod tests {
             assert_eq!(theme::Tokens::get(&ctx).dark, dark, "{setting} with the OS at {os:?}");
             assert_eq!(a.run("ui.theme", json!({})).unwrap()["dark"], dark, "{setting} with the OS at {os:?}");
         }
+    }
+
+    #[test]
+    fn thesaurus_button_and_shortcut_open_the_dialog_with_the_selected_words_synonyms() {
+        wordcraft_engine::proof::thesaurus::install_italian("UTF-8\nbello|1\n(agg.)|grazioso|piacevole\n".as_bytes());
+        let mut a = app();
+        a.session.run("review.language", &json!({"lang": "it-IT", "default": true})).unwrap();
+        a.session.run("text.insert", &json!({"text": "la bella casa"})).unwrap();
+        a.session.run("select.text", &json!({"text": "bella"})).unwrap();
+        // The ribbon button and Shift+F7 run the command without parameters: that opens the dialog.
+        a.run("review.thesaurus", json!({})).unwrap();
+        let Some(dialogs::Dialog::Thesaurus { result, .. }) = &a.dialog else { panic!("Thesaurus dialog open") };
+        assert_eq!((result["language"].as_str(), result["synonyms"][0].as_str()), (Some("it"), Some("graziosa")));
+        // Replace puts the picked synonym in the selected word's place.
+        canvas::replace_word_with(&mut a, "graziosa");
+        assert_eq!(a.session.doc.para_at(&a.session.sel.focus).map(|p| p.text.clone()).as_deref(), Some("la graziosa casa"));
+        // With a word given, the command only answers (scripts and the CLI never open dialogs).
+        a.dialog = None;
+        a.run("review.thesaurus", json!({"word": "bella"})).unwrap();
+        assert!(a.dialog.is_none());
     }
 
     #[test]

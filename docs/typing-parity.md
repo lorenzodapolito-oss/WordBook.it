@@ -150,6 +150,15 @@ Applied when a word is finished by a space, punctuation **or Enter** (`enter_fin
   bundled: same folders as the Hunspell dictionaries, then `/usr/share/mythes`), finds inflected
   forms (`belle` → `bello`, `l'amico`, `amiche`) and gives the synonyms in the case of the word
   (`thesaurus_reads_the_installed_italian_file_and_keeps_the_words_case`).
+  The word is the `word` parameter, else the selected text (a phrase falls back to its first
+  word), else the word at the caret; its language is the `lang` parameter, else that of the text
+  there (run, style, document), like spelling, so "bella" selected in Italian text answers
+  `language: "it"` whatever the document default is. Adjectives agree with the typed word
+  (`bella` → `graziosa`). The answer carries `available`, `file`, `synonyms` and `meanings`.
+  Without parameters (button, Shift+F7, Synonyms in the context menu) the UI opens the Thesaurus
+  dialog: pick a synonym, double-click to look it up, Replace. Pinned by
+  `thesaurus_follows_the_language_of_the_selected_word` and
+  `thesaurus_button_and_shortcut_open_the_dialog_with_the_selected_words_synonyms`.
 
 ¹ From Word's documented AutoFormat and AutoCorrect options; not yet keystroke-compared with
 Word.
@@ -215,6 +224,7 @@ Word.
 | 2026-10-12 | trivial | Sample-text formulas on Enter (#1067), exact matching, bounded parameters, original English and one-step undo |
 | 2026-10-13 | minor | Alt+numpad decimal character codes: the ANSI code page with a leading 0, the OEM page without (the system locale's on Windows: 1250–1254, 437/737/850/852/857/866), Unicode above 255 (#961) |
 | 2026-10-13 | trivial | Fields: text typed or pasted just after a field (a Zotero citation) goes outside it (#898) |
+| 2026-10-17 | minor | Thesaurus: language and word read from the selection; Thesaurus dialog behind the button, Shift+F7 and Synonyms |
 | 2026-10-16 | minor | AutoCorrect: built-in Italian replacement list and abbreviations for Italian text, optional «guillemets»; Thesaurus reads an installed MyThes Italian file |
 | 2026-10-14 | trivial | Track Changes: a table delete over text already marked deleted changes nothing, so Reject All still restores it (#1329 review 2) |
 | 2026-10-14 | trivial | Track Changes: empty tables are removed under tracking; Delete Columns leaves merged cells that keep a column; repeated Change Case reads only live text (#1329 review) |

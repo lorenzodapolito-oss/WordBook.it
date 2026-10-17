@@ -1273,3 +1273,26 @@ fn thesaurus_reads_the_installed_italian_file_and_keeps_the_words_case() {
     assert_eq!(r["synonyms"][0], "Fine");
     assert!(s.run("review.thesaurus", &json!({"word": "bello", "lang": "en-US"})).unwrap()["synonyms"].as_array().is_some_and(|a| a.is_empty()));
 }
+
+#[test]
+fn thesaurus_follows_the_language_of_the_selected_word() {
+    wordcraft_proof::thesaurus::install_italian(MYTHES_SAMPLE.as_bytes());
+    let mut s = italian();
+    typ(&mut s, "la bella casa");
+    // "bella" selected: Italian, inflected like the word typed (feminine).
+    s.run("select.text", &json!({"text": "bella"})).unwrap();
+    let r = s.run("review.thesaurus", &json!({})).unwrap();
+    assert_eq!((r["language"].as_str(), r["available"].as_bool(), r["word"].as_str()), (Some("it"), Some(true), Some("bella")));
+    assert_eq!(r["synonyms"][0], "graziosa");
+    assert_eq!(r["synonyms"][1], "piacevole");
+    // A word given by hand takes the language of the selection, no `lang` needed.
+    let r = s.run("review.thesaurus", &json!({"word": "bella"})).unwrap();
+    assert_eq!(r["language"], "it");
+    assert_eq!(r["synonyms"][0], "graziosa");
+    // A selected phrase the file lacks falls back to its first word.
+    s.run("select.text", &json!({"text": "bella casa"})).unwrap();
+    let r = s.run("review.thesaurus", &json!({})).unwrap();
+    assert_eq!(r["word"], "bella");
+    // The command only reports: it doesn't edit the document.
+    assert_eq!(s.run("review.thesaurus", &json!({})).unwrap()["language"], "it");
+}

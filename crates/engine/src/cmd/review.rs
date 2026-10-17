@@ -933,21 +933,47 @@ fn thesaurus(s: &mut Session, v: &Value) -> CmdResult {
         ("shared", &["common", "joint", "communal", "mutual"]),
         ("community", &["group", "society", "collective", "circle"]),
     ];
-    // The word as typed (its case is kept for the synonyms) and its proofing language: the text
-    // at the caret, or `lang` (a BCP 47 tag) for a word given by hand.
-    let (orig, lang) = match p::str(v, "word") {
-        Some(w) => (w.trim().to_string(), wordcraft_proof::ProofLang::from_tag(p::str(v, "lang").or(s.editing_lang.as_deref()))),
+    // What to look up: a word given by hand, else the selected text (one paragraph, a word or a
+    // short phrase), else the word at the caret. Its language is `lang` (a BCP 47 tag) when given,
+    // else that of the text where the word is: its own run, its style, the document's (the same
+    // that spelling uses), so "bella" selected in Italian text is looked up in Italian.
+    let sel = s.sel.clone();
+    let (a, b) = sel.ordered();
+    let (mut orig, off) = match p::str(v, "word") {
+        Some(w) => (w.trim().to_string(), a.off),
         None => {
-            let f = s.sel.focus.clone();
-            let p = s.doc.para_at(&f).ok_or_else(|| CmdError::Failed("no word".into()))?;
-            let (a, b) = p.word_at(f.off);
-            (p.text.get(a..b).unwrap_or("").trim().to_string(), super::tools::proof_lang_at(s, &f, a))
+            let selected = (!sel.is_collapsed() && a.story == b.story && a.path == b.path)
+                .then(|| s.doc.para_at(&a).and_then(|p| p.text.get(a.off..b.off)))
+                .flatten()
+                .filter(|raw| {
+                    !raw.trim().is_empty()
+                        && raw.chars().count() <= 60
+                        && !raw.contains(['\n', '\r', '\u{2029}', '\u{000B}', wordcraft_doc::para::OBJ])
+                });
+            match selected {
+                Some(raw) => (raw.trim().to_string(), a.off + raw.len() - raw.trim_start().len()),
+                None => {
+                    let p = s.doc.para_at(&sel.focus).ok_or_else(|| CmdError::Failed("no word".into()))?;
+                    let (wa, wb) = p.word_at(sel.focus.off);
+                    (p.text.get(wa..wb).unwrap_or("").trim().to_string(), wa)
+                }
+            }
         }
     };
-    let word = orig.to_lowercase();
+    let lang = match p::str(v, "lang") {
+        Some(tag) => wordcraft_proof::ProofLang::from_tag(Some(tag)),
+        None => super::tools::proof_lang_at(s, &a, off),
+    };
     // Italian reads the MyThes file installed on the system (LGPL: never bundled).
     if let Some(th) = wordcraft_proof::thesaurus::for_lang(lang) {
-        let meanings = th.lookup(&orig);
+        let mut meanings = th.lookup(&orig);
+        // A phrase the file doesn't have: its first word.
+        if meanings.is_empty()
+            && let Some(first) = orig.split_whitespace().next().filter(|f| *f != orig)
+        {
+            orig = first.to_string();
+            meanings = th.lookup(&orig);
+        }
         let mut synonyms: Vec<String> = Vec::new();
         for m in &meanings {
             for syn in &m.synonyms {
@@ -962,10 +988,22 @@ fn thesaurus(s: &mut Session, v: &Value) -> CmdResult {
             .iter()
             .map(|m| json!({"label": m.label, "synonyms": m.synonyms.iter().map(|x| match_case(&orig, x)).collect::<Vec<_>>()}))
             .collect();
-        return Ok(json!({"word": word, "language": lang.code(), "available": !th.is_empty(), "synonyms": synonyms, "meanings": senses}));
+        return Ok(json!({
+            "word": orig.to_lowercase(), "language": lang.code(), "available": !th.is_empty(),
+            "file": wordcraft_proof::thesaurus::ITALIAN_FILE, "source": th.source().map(|p| p.display().to_string()),
+            "synonyms": synonyms, "meanings": senses,
+        }));
     }
-    let syn = T.iter().find(|(w, _)| *w == word).map(|(_, l)| l.iter().map(|x| match_case(&orig, x)).collect::<Vec<_>>()).unwrap_or_default();
-    Ok(json!({"word": word, "language": lang.code(), "available": true, "synonyms": syn}))
+    // English keeps the small built-in list; other languages have no thesaurus.
+    let word = orig.to_lowercase();
+    let english = lang == wordcraft_proof::ProofLang::En;
+    let syn = if english {
+        T.iter().find(|(w, _)| *w == word).map(|(_, l)| l.iter().map(|x| match_case(&orig, x)).collect::<Vec<_>>()).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    let senses: Vec<Value> = if syn.is_empty() { Vec::new() } else { vec![json!({"label": "", "synonyms": syn})] };
+    Ok(json!({"word": word, "language": lang.code(), "available": english, "synonyms": syn, "meanings": senses}))
 }
 
 /// `syn` written in the case of the word it replaces: "Bello" → "Grazioso", "BELLO" → "GRAZIOSO".

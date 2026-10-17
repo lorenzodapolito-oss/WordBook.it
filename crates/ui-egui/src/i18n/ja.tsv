@@ -2235,3 +2235,9 @@
 # Reading Mode column widths (#1040)
 	Narrow	狭い
 	Medium	中
+	Looked up:	検索語:
+	There is no thesaurus for this language.	この言語の類義語辞典はありません。
+	No synonyms found for this word.	この単語の類義語は見つかりませんでした。
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	類義語ファイル (th_it_IT_v2.dat) が見つかりません。辞書フォルダーに置いてください。
+	Double-click a synonym to look it up.	類義語をダブルクリックすると検索します。
+	Thesaurus…	類義語…

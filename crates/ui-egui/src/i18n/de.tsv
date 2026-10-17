@@ -2234,3 +2234,9 @@
 # Reading Mode column widths (#1040)
 	Narrow	Schmal
 	Medium	Mittel
+	Looked up:	Nachgeschlagen:
+	There is no thesaurus for this language.	Für diese Sprache gibt es kein Synonymwörterbuch.
+	No synonyms found for this word.	Keine Synonyme für dieses Wort gefunden.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Die Thesaurus-Datei (th_it_IT_v2.dat) wurde nicht gefunden. Legen Sie sie im Wörterbuchordner ab.
+	Double-click a synonym to look it up.	Doppelklicken Sie auf ein Synonym, um es nachzuschlagen.
+	Thesaurus…	Thesaurus…

@@ -38,6 +38,7 @@ pub struct Meaning {
 pub struct Thesaurus {
     text: String,
     index: HashMap<String, Vec<usize>>,
+    source: Option<PathBuf>,
 }
 
 impl Thesaurus {
@@ -67,7 +68,12 @@ impl Thesaurus {
                 index.entry(normalize(word)).or_default().push(at);
             }
         }
-        Thesaurus { text, index }
+        Thesaurus { text, index, source: None }
+    }
+
+    /// The `.dat` it was read from (`None` for one given as bytes).
+    pub fn source(&self) -> Option<&Path> {
+        self.source.as_deref()
     }
 
     /// No entries (no file found, or an unreadable one).
@@ -82,7 +88,14 @@ impl Thesaurus {
 
     /// The senses of `word`, or of a base form of it when the word as typed has none (`belle` →
     /// `bello`, `amici` → `amico`, `l'amico` → `amico`). Empty when the thesaurus doesn't know it.
+    ///
+    /// The file lists adjectives in the masculine singular only. When the word as typed was
+    /// reached through its masculine form (`bella`, `belle`, `belli` → `bello`), the synonyms of
+    /// the adjective senses (`agg.`) are put in the same gender and number (`graziosa`,
+    /// `graziose`, `graziosi`), so that a replacement agrees with the text. Nouns and verbs are
+    /// given as the file has them.
     pub fn lookup(&self, word: &str) -> Vec<Meaning> {
+        let typed = base_form(&normalize(word)).to_string();
         for cand in candidates(word) {
             let Some(offs) = self.index.get(&cand) else { continue };
             let mut out: Vec<Meaning> = Vec::new();
@@ -90,6 +103,7 @@ impl Thesaurus {
                 self.read_entry(off, &cand, &mut out);
             }
             if !out.is_empty() {
+                agree_adjectives(&mut out, &typed, &cand);
                 return out;
             }
         }
@@ -136,14 +150,69 @@ fn normalize(word: &str) -> String {
     word.trim().replace('\u{2019}', "'").to_lowercase()
 }
 
+/// The word after an elision (`l'amico` → `amico`); a truncation keeps its apostrophe (`po'`).
+fn base_form(w: &str) -> &str {
+    match w.rsplit_once('\'') {
+        Some((_, after)) if !after.is_empty() => after,
+        _ => w.trim_end_matches('\''),
+    }
+}
+
+/// The synonym `syn` of a masculine singular adjective, in the gender and number that the typed
+/// word's last letter says: `a` feminine singular, `e` feminine plural, `i` masculine plural.
+/// Words of several parts and endings it doesn't know are returned as they are, and so are the
+/// masculine plurals in -co / -go, whose spelling depends on the word (amici, antichi).
+fn inflect(syn: &str, typed_end: char) -> String {
+    if syn.contains(char::is_whitespace) {
+        return syn.to_string();
+    }
+    let with = |cut: usize, add: &str| format!("{}{add}", syn.get(..syn.len().saturating_sub(cut)).unwrap_or(syn));
+    let co = syn.ends_with("co");
+    let go = syn.ends_with("go");
+    let io = syn.ends_with("io");
+    match typed_end {
+        'a' if co => with(2, "ca"),
+        'a' if go => with(2, "ga"),
+        'a' if syn.ends_with('o') => with(1, "a"),
+        'e' if co => with(2, "che"),
+        'e' if go => with(2, "ghe"),
+        'e' if syn.ends_with('o') => with(1, "e"),
+        'e' if syn.ends_with('e') => with(1, "i"),
+        'i' if io => with(2, "i"),
+        'i' if co || go => syn.to_string(),
+        'i' if syn.ends_with('o') || syn.ends_with('e') => with(1, "i"),
+        _ => syn.to_string(),
+    }
+}
+
+/// Put the synonyms of the adjective senses in the gender and number of `typed` when it was
+/// found as `found`, its masculine singular (`bella` → `bello`); see [`Thesaurus::lookup`].
+fn agree_adjectives(meanings: &mut Vec<Meaning>, typed: &str, found: &str) {
+    let (Some(t), Some('o')) = (typed.chars().next_back(), found.chars().next_back()) else { return };
+    let same_stem = typed.get(..typed.len().saturating_sub(1)) == found.get(..found.len().saturating_sub(1));
+    if !matches!(t, 'a' | 'e' | 'i') || !same_stem {
+        return;
+    }
+    let is_adjective = |m: &Meaning| m.label.to_lowercase().starts_with("agg");
+    let has_adjective = meanings.iter().any(is_adjective);
+    for m in meanings.iter_mut().filter(|m| is_adjective(m)) {
+        for syn in &mut m.synonyms {
+            *syn = inflect(syn, t);
+        }
+    }
+    // A masculine noun (`s.m.`) cannot stand for a feminine word: with an adjective sense to
+    // show instead, `bella` doesn't list `sereno` or `fidanzato`. Without one (`amica` →
+    // `amico`) the file's senses are all there is, and they stay.
+    if has_adjective && matches!(t, 'a' | 'e') {
+        meanings.retain(|m| !m.label.to_lowercase().starts_with("s.m"));
+    }
+}
+
 /// Forms to look up, most likely first: the word, the word after an elision (`l'amico`), and
 /// the same stem with another Italian ending (`belle` → `bello`; `amici` → `amico`).
 fn candidates(word: &str) -> Vec<String> {
     let w = normalize(word);
-    let base = match w.rsplit_once('\'') {
-        Some((_, after)) if !after.is_empty() => after,
-        _ => w.trim_end_matches('\''),
-    };
+    let base = base_form(&w);
     // The word as typed first (`po'` keeps its apostrophe), then without the elided article.
     let mut out = vec![w.clone()];
     let mut push = |s: String| {
@@ -178,6 +247,9 @@ fn candidates(word: &str) -> Vec<String> {
 /// File names of the Italian thesaurus (LibreOffice's `_v2` first).
 const IT_NAMES: &[&str] = &["th_it_IT_v2", "th_it_IT", "th_it"];
 
+/// The file the Italian thesaurus is looked for as (the first name searched, with its extension).
+pub const ITALIAN_FILE: &str = "th_it_IT_v2.dat";
+
 /// The Italian thesaurus: `None` until first use, then the installed one (or an empty one).
 /// The flag is true for one given with [`install_italian`], which [`reload`] keeps.
 static IT: RwLock<Option<(Arc<Thesaurus>, bool)>> = RwLock::new(None);
@@ -203,7 +275,9 @@ pub fn load(path: &Path) -> Result<Thesaurus, String> {
         return Err(format!("{}: too large ({len} bytes)", path.display()));
     }
     let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok(Thesaurus::from_bytes(&bytes))
+    let mut t = Thesaurus::from_bytes(&bytes);
+    t.source = Some(path.to_path_buf());
+    Ok(t)
 }
 
 /// The `.dat` of the Italian thesaurus found now, if any (File › Options › Proofing).
@@ -278,6 +352,34 @@ mod tests {
         assert!(t.lookup("bello").iter().all(|m| !m.synonyms.iter().any(|s| s == "bello")));
     }
 
+    /// Adjectives are listed in the masculine singular: the synonyms follow the typed word.
+    #[test]
+    fn adjective_synonyms_agree_with_the_typed_word() {
+        let t = Thesaurus::from_text(
+            "UTF-8\nbello|2\n(agg.)|grazioso|piacevole|ameno|in crisi\n(s.m.)|sereno\ncaro|1\n(agg.)|simpatico|lungo|antico|vecchio\n".to_string(),
+        );
+        let syn = |w: &str, sense: usize| t.lookup(w)[sense].synonyms.clone();
+        assert_eq!(syn("bello", 0), ["grazioso", "piacevole", "ameno", "in crisi"], "masculine singular as listed");
+        assert_eq!(syn("bella", 0), ["graziosa", "piacevole", "amena", "in crisi"], "a word of several parts stays");
+        assert_eq!(syn("belle", 0), ["graziose", "piacevoli", "amene", "in crisi"]);
+        assert_eq!(syn("belli", 0), ["graziosi", "piacevoli", "ameni", "in crisi"]);
+        assert_eq!(syn("Bella", 0)[0], "graziosa", "case is the caller's");
+        // A noun sense is not an adjective: it keeps the file's form, and a feminine word shows
+        // no masculine noun when there is an adjective to show instead.
+        assert_eq!(syn("belli", 1), ["sereno"]);
+        assert_eq!(t.lookup("bella").len(), 1);
+        assert_eq!(t.lookup("belle").len(), 1);
+        // With no adjective sense the nouns are all there is: `amica` keeps the senses of `amico`.
+        let n = Thesaurus::from_text("UTF-8\namico|1\n(s.m.)|compagno|sodale\n".to_string());
+        assert_eq!(n.lookup("amica")[0].synonyms, ["compagno", "sodale"]);
+        // -co / -go: regular in the feminine, left alone in the masculine plural.
+        assert_eq!(syn("cara", 0), ["simpatica", "lunga", "antica", "vecchia"]);
+        assert_eq!(syn("care", 0), ["simpatiche", "lunghe", "antiche", "vecchie"]);
+        assert_eq!(syn("cari", 0), ["simpatico", "lungo", "antico", "vecchi"]);
+        // The head word itself, and a word found as typed, are never changed.
+        assert_eq!(syn("caro", 0)[0], "simpatico");
+    }
+
     #[test]
     fn finds_inflected_and_elided_forms_and_ignores_case() {
         let t = Thesaurus::from_text(SAMPLE.to_string());
@@ -318,6 +420,10 @@ mod tests {
             println!("{w}: {} senses, first: {:?}", m.len(), m.first());
             assert!(!m.is_empty(), "{w}");
         }
+        // The file has no "bella": its feminine synonyms come from "bello", inflected.
+        let bella: Vec<String> = t.lookup("bella").into_iter().flat_map(|m| m.synonyms).collect();
+        println!("bella: {bella:?}");
+        assert!(bella.iter().any(|s| s == "graziosa") && !bella.iter().any(|s| s == "grazioso"), "{bella:?}");
     }
 
     #[test]

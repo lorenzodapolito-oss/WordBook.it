@@ -2626,3 +2626,9 @@ preview	Title	Ukázka
 # Reading Mode column widths (#1040)
 	Narrow	Úzká
 	Medium	Střední
+	Looked up:	Hledáno:
+	There is no thesaurus for this language.	Pro tento jazyk není k dispozici slovník synonym.
+	No synonyms found for this word.	Pro toto slovo nebyla nalezena žádná synonyma.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Soubor synonym (th_it_IT_v2.dat) nebyl nalezen. Vložte ho do složky se slovníky.
+	Double-click a synonym to look it up.	Dvojitým kliknutím na synonymum je vyhledáte.
+	Thesaurus…	Synonyma…

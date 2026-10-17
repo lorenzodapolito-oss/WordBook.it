@@ -2649,3 +2649,9 @@ preview	Title	Titel
 	Bottom Right Cell	Nedre högra cellen
 	Inside Horizontal Border	Inre vågrät kantlinje
 	Inside Vertical Border	Inre lodrät kantlinje
+	Looked up:	Slog upp:
+	There is no thesaurus for this language.	Det finns ingen synonymordlista för det här språket.
+	No synonyms found for this word.	Inga synonymer hittades för det här ordet.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Synonymfilen (th_it_IT_v2.dat) hittades inte. Lägg den i ordboksmappen.
+	Double-click a synonym to look it up.	Dubbelklicka på en synonym för att slå upp den.
+	Thesaurus…	Synonymer…

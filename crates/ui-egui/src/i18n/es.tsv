@@ -2601,3 +2601,9 @@ preview	Title	Título
 # Reading Mode column widths (#1040)
 	Narrow	Estrecha
 	Medium	Media
+	Looked up:	Buscado:
+	There is no thesaurus for this language.	No hay diccionario de sinónimos para este idioma.
+	No synonyms found for this word.	No se encontraron sinónimos para esta palabra.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	No se encontró el archivo de sinónimos (th_it_IT_v2.dat). Colócalo en la carpeta de diccionarios.
+	Double-click a synonym to look it up.	Haz doble clic en un sinónimo para buscarlo.
+	Thesaurus…	Sinónimos…

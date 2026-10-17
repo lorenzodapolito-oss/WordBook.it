@@ -2249,3 +2249,9 @@
 # Reading Mode column widths (#1040)
 	Narrow	Уска
 	Medium	Средња
+	Looked up:	Тражено:
+	There is no thesaurus for this language.	За овај језик нема речника синонима.
+	No synonyms found for this word.	Нису пронађени синоними за ову реч.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Датотека синонима (th_it_IT_v2.dat) није пронађена. Ставите је у фасциклу речника.
+	Double-click a synonym to look it up.	Двапут кликните синоним да га потражите.
+	Thesaurus…	Синоними…

@@ -288,6 +288,11 @@ pub enum Dialog {
     WordCount {
         stats: Value,
     },
+    /// Thesaurus: the `review.thesaurus` answer for the selected (or caret) word and the synonym picked.
+    Thesaurus {
+        result: Value,
+        picked: Option<String>,
+    },
     Zoom {
         percent: f32,
     },
@@ -803,6 +808,7 @@ impl Dialog {
             Dialog::Link { .. } => "link",
             Dialog::Bookmark { .. } => "bookmark",
             Dialog::WordCount { .. } => "wordCount",
+            Dialog::Thesaurus { .. } => "thesaurus",
             Dialog::Zoom { .. } => "zoom",
             Dialog::Watermark { .. } => "watermark",
             Dialog::Phonetic { .. } => "phonetic",
@@ -1010,6 +1016,7 @@ impl Dialog {
             }
             "link" => Dialog::Link { url: "https://".into(), text: app.session.selected_text(), place: false, targets: None, pick: None },
             "bookmark" => Dialog::Bookmark { name: bookmark_at_caret(&app.session), by_location: false, hidden: false, deleted: false },
+            "thesaurus" => Dialog::Thesaurus { result: app.session.run("review.thesaurus", &json!({})).unwrap_or_default(), picked: None },
             "wordCount" => Dialog::WordCount { stats: app.session.run("review.wordCount", &json!({})).unwrap_or_default() },
             "zoom" => Dialog::Zoom { percent: (app.session.view.zoom * 100.0).round() },
             "watermark" => Dialog::Watermark { text: "CONFIDENTIAL".into(), diagonal: true },
@@ -1250,6 +1257,7 @@ pub fn show(app: &mut WordApp, ctx: &egui::Context) {
         Dialog::Link { .. } => "Insert Hyperlink",
         Dialog::Bookmark { .. } => "Bookmark",
         Dialog::WordCount { .. } => "Word Count",
+        Dialog::Thesaurus { .. } => "Thesaurus",
         Dialog::Zoom { .. } => "Zoom",
         Dialog::Watermark { .. } => "Custom Watermark",
         Dialog::Phonetic { .. } => "Phonetic Guide",
@@ -2092,6 +2100,7 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
             ok || cancel
         }
         Dialog::Bookmark { name, by_location, hidden, deleted } => bookmark(app, ui, name, by_location, hidden, deleted),
+        Dialog::Thesaurus { result, picked } => thesaurus(app, ui, result, picked),
         Dialog::WordCount { stats } => {
             egui::Grid::new("wc").num_columns(2).spacing(vec2(30.0, 6.0)).show(ui, |ui| {
                 for (l, k) in [
@@ -3657,6 +3666,58 @@ fn page_valign_value(v: wordcraft_doc::section::PageVAlign) -> &'static str {
         PageVAlign::Justify => "justify",
         PageVAlign::Bottom => "bottom",
     }
+}
+
+/// The Thesaurus dialog (Shift+F7): the meanings of the word, a synonym to pick (double-click looks
+/// it up in turn) and Replace, which puts it in the word's place. Returns whether to close.
+fn thesaurus(app: &mut WordApp, ui: &mut Ui, result: &mut Value, picked: &mut Option<String>) -> bool {
+    let word = result.get("word").and_then(Value::as_str).unwrap_or("").to_string();
+    let lang = result.get("language").and_then(Value::as_str).unwrap_or("").to_string();
+    ui.label(egui::RichText::new(format!("{} {word}", tl!("Looked up:"))).strong());
+    let meanings: Vec<Value> = result.get("meanings").and_then(Value::as_array).cloned().unwrap_or_default();
+    let available = result.get("available").and_then(Value::as_bool).unwrap_or(false);
+    let mut look_up = None;
+    egui::ScrollArea::vertical().max_height(260.0).min_scrolled_width(320.0).show(ui, |ui| {
+        if meanings.is_empty() {
+            let note = if available {
+                tl!("No synonyms found for this word.")
+            } else if result.get("file").is_some() {
+                tl!("The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.")
+            } else {
+                tl!("There is no thesaurus for this language.")
+            };
+            ui.label(note);
+        }
+        for m in &meanings {
+            let label = m.get("label").and_then(Value::as_str).unwrap_or("");
+            if !label.is_empty() {
+                ui.label(egui::RichText::new(label).italics().weak());
+            }
+            for w in m.get("synonyms").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str) {
+                let on = picked.as_deref() == Some(w);
+                let r = ui.selectable_label(on, w);
+                if r.clicked() {
+                    *picked = Some(w.to_string());
+                }
+                if r.double_clicked() {
+                    look_up = Some(w.to_string());
+                }
+            }
+        }
+    });
+    if let Some(w) = look_up
+        && let Ok(v) = app.session.run("review.thesaurus", &json!({"word": w, "lang": lang}))
+    {
+        *result = v;
+        *picked = None;
+    }
+    ui.weak(tl!("Double-click a synonym to look it up."));
+    let (ok, cancel) = buttons(ui, tl!("Replace"));
+    if ok && let Some(w) = picked.clone() {
+        crate::canvas::replace_word_with(app, &w);
+        return true;
+    }
+    cancel
 }
 
 #[cfg(test)]

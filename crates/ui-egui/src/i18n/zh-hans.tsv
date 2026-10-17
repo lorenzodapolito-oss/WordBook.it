@@ -2247,3 +2247,9 @@
 # Reading Mode column widths (#1040)
 	Narrow	窄
 	Medium	中等
+	Looked up:	查找：
+	There is no thesaurus for this language.	此语言没有同义词库。
+	No synonyms found for this word.	未找到该词的同义词。
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	找不到同义词文件 (th_it_IT_v2.dat)。请将其放入词典文件夹。
+	Double-click a synonym to look it up.	双击同义词即可查找。
+	Thesaurus…	同义词库…

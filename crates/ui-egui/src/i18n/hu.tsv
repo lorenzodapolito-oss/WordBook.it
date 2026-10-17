@@ -2630,3 +2630,9 @@
 # Reading Mode column widths (#1040)
 	Narrow	Keskeny
 	Medium	Közepes
+	Looked up:	Keresve:
+	There is no thesaurus for this language.	Ehhez a nyelvhez nincs szinonimaszótár.
+	No synonyms found for this word.	Ehhez a szóhoz nem található szinonima.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	A szinonimafájl (th_it_IT_v2.dat) nem található. Tegye a szótárak mappájába.
+	Double-click a synonym to look it up.	Kattintson duplán egy szinonimára a kereséséhez.
+	Thesaurus…	Szinonimák…

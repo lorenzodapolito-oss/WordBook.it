@@ -2674,3 +2674,9 @@ template	Letter	Thư
 # Reading Mode column widths (#1040)
 	Narrow	Hẹp
 	Medium	Trung bình
+	Looked up:	Đã tra cứu:
+	There is no thesaurus for this language.	Không có từ điển từ đồng nghĩa cho ngôn ngữ này.
+	No synonyms found for this word.	Không tìm thấy từ đồng nghĩa cho từ này.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Không tìm thấy tệp từ đồng nghĩa (th_it_IT_v2.dat). Hãy đặt nó vào thư mục từ điển.
+	Double-click a synonym to look it up.	Nhấp đúp vào một từ đồng nghĩa để tra cứu.
+	Thesaurus…	Từ đồng nghĩa…

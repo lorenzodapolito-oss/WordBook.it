@@ -2846,19 +2846,21 @@ fn context_menu(app: &mut WordApp, ui: &mut Ui) {
     item(ui, app, "Copy", "edit.copy", json!({}));
     item(ui, app, "Paste", "edit.paste", json!({}));
     ui.separator();
-    if let Some(syn) = app.canvas.context_synonyms.clone().and_then(|v| v.as_array().cloned()).filter(|a| !a.is_empty()) {
+    let syn = app.canvas.context_synonyms.clone().and_then(|v| v.as_array().cloned()).filter(|a| !a.is_empty());
+    if syn.is_none() {
+        // Nothing to list: Synonyms still answers, with the Thesaurus dialog (and why it is empty).
+        item(ui, app, "Synonyms", "review.thesaurus", json!({}));
+    }
+    if let Some(syn) = syn {
         ui.menu_button(tl!("Synonyms"), |ui| {
             for w in syn.iter().filter_map(|x| x.as_str()) {
                 if ui.button(w).clicked() {
-                    let _ = app.run("select.word", json!({}));
-                    let (a, b) = app.session.sel.ordered();
-                    let trimmed = app.session.doc.para_at(&a).and_then(|p| p.text.get(a.off..b.off)).map(|t| t.trim_end().len()).unwrap_or(0);
-                    let end = wordcraft_doc::Pos { off: a.off + trimmed, ..b };
-                    app.session.sel = wordcraft_engine::Selection { anchor: a, focus: end };
-                    let _ = app.run("text.insert", json!({"text": w, "raw": true}));
+                    replace_word_with(app, w);
                     ui.close();
                 }
             }
+            ui.separator();
+            item(ui, app, "Thesaurus…", "review.thesaurus", json!({}));
         });
     }
     item(ui, app, "Font…", "ui.dialog", json!({"name": "font"}));
@@ -3056,6 +3058,18 @@ fn link_under(app: &WordApp, layout: &DocLayout, page: usize, x: f32, y: f32, po
 /// so a document can't launch `file:` paths, programs or custom-scheme handlers.
 fn is_followable_link(url: &str) -> bool {
     wordcraft_doc::link::is_web_or_mail_link(url)
+}
+
+/// Puts `w` in place of the selection (trailing space kept), or of the word at the caret.
+pub(crate) fn replace_word_with(app: &mut crate::WordApp, w: &str) {
+    if app.session.sel.is_collapsed() {
+        let _ = app.run("select.word", json!({}));
+    }
+    let (a, b) = app.session.sel.ordered();
+    let trimmed = app.session.doc.para_at(&a).and_then(|p| p.text.get(a.off..b.off)).map(|t| t.trim_end().len()).unwrap_or(0);
+    let end = wordcraft_doc::Pos { off: a.off + trimmed, ..b };
+    app.session.sel = wordcraft_engine::Selection { anchor: a, focus: end };
+    let _ = app.run("text.insert", json!({"text": w, "raw": true}));
 }
 
 #[cfg(test)]

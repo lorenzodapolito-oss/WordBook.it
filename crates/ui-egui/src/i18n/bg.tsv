@@ -2623,3 +2623,9 @@
 # Reading Mode column widths (#1040)
 	Narrow	Тясна
 	Medium	Средна
+	Looked up:	Търсена дума:
+	There is no thesaurus for this language.	Няма речник на синонимите за този език.
+	No synonyms found for this word.	Не са намерени синоними за тази дума.
+	The thesaurus file (th_it_IT_v2.dat) was not found. Put it in the dictionaries folder.	Файлът със синоними (th_it_IT_v2.dat) не е намерен. Поставете го в папката с речници.
+	Double-click a synonym to look it up.	Щракнете двукратно върху синоним, за да го потърсите.
+	Thesaurus…	Синоними…
