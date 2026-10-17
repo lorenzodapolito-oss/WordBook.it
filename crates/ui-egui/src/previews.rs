@@ -504,8 +504,20 @@ pub fn style_preview(app: &mut WordApp, ui: &mut Ui, id: &str, ty: &str, size: e
     }
 }
 
-/// The Home tab's Styles gallery.
-pub fn style_gallery(app: &mut WordApp, ui: &mut Ui, state: &Value) {
+/// Most tiles the Home tab's Styles gallery shows, and the fewest it shrinks to.
+pub const STYLE_TILES_MAX: usize = 6;
+const STYLE_TILES_MIN: usize = 2;
+const STYLE_TILE_W: f32 = 76.0;
+const STYLE_ARROWS_W: f32 = 18.0;
+
+/// How many tiles fit in `room` points (the gallery's own width, arrows included).
+pub fn style_tiles_for(room: f32) -> usize {
+    let n = ((room - STYLE_ARROWS_W) / STYLE_TILE_W).floor();
+    if n.is_finite() { (n.max(0.0) as usize).clamp(STYLE_TILES_MIN, STYLE_TILES_MAX) } else { STYLE_TILES_MAX }
+}
+
+/// The Home tab's Styles gallery, `visible` tiles wide.
+pub fn style_gallery(app: &mut WordApp, ui: &mut Ui, state: &Value, visible: usize) {
     let t = Tokens::get(ui.ctx());
     let current = state.get("style").and_then(Value::as_str).unwrap_or("Normal").to_string();
     let styles: Vec<(String, String)> = app.session.doc.styles.curated_gallery().iter().map(|s| (s.id.clone(), crate::i18n::style_name(s))).collect();
@@ -513,8 +525,8 @@ pub fn style_gallery(app: &mut WordApp, ui: &mut Ui, state: &Value) {
     let skey = app.previews.styles_key(&app.session.doc, rev);
     let ppp = ui.ctx().pixels_per_point();
     let start = ui.data(|d| d.get_temp::<usize>(egui::Id::new("gallery_start"))).unwrap_or(0).min(styles.len().saturating_sub(1));
-    let visible = 6usize;
-    let (area, _) = ui.allocate_exact_size(vec2(visible as f32 * 76.0 + 18.0, crate::widgets::CONTENT_H), Sense::hover());
+    let visible = visible.clamp(STYLE_TILES_MIN, STYLE_TILES_MAX);
+    let (area, _) = ui.allocate_exact_size(vec2(visible as f32 * STYLE_TILE_W + STYLE_ARROWS_W, crate::widgets::CONTENT_H), Sense::hover());
     ui.painter().rect(area.shrink(1.0), 4.0, t.input, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
     for (k, (id, name)) in styles.iter().skip(start).take(visible).enumerate() {
         let r = Rect::from_min_size(pos2(area.min.x + 3.0 + k as f32 * 76.0, area.min.y + 3.0), vec2(74.0, area.height() - 6.0));
@@ -663,6 +675,17 @@ pub fn table_style_tile(ui: &mut Ui, app: &mut WordApp, style: &str) -> Response
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The Styles gallery gives up tiles in a narrow window, never below two or above six.
+    #[test]
+    fn style_gallery_shrinks_with_the_room_it_gets() {
+        assert_eq!(style_tiles_for(10_000.0), STYLE_TILES_MAX);
+        assert_eq!(style_tiles_for(6.0 * STYLE_TILE_W + STYLE_ARROWS_W), 6);
+        assert_eq!(style_tiles_for(6.0 * STYLE_TILE_W + STYLE_ARROWS_W - 1.0), 5);
+        assert_eq!(style_tiles_for(3.0 * STYLE_TILE_W + STYLE_ARROWS_W), 3);
+        assert_eq!(style_tiles_for(-50.0), STYLE_TILES_MIN);
+        assert_eq!(style_tiles_for(f32::NAN), STYLE_TILES_MAX);
+    }
 
     /// #848: each trip through the Font box loaded every family it showed, for good. Entries are
     /// now drawn with a face read for the preview alone: installed families stay unloaded.
