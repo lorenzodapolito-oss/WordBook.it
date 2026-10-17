@@ -348,8 +348,6 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
             let bg = ui.interact(ui.max_rect(), ui.id().with("ribbon_background"), Sense::click());
             bg.context_menu(|ui| crate::widgets::customize_menu_items(ui, app));
             let entry = user_tabs.iter().find(|e| e.name == app.ui.tab);
-            let viewport_w = ui.available_width();
-            ui.data_mut(|d| d.insert_temp(egui::Id::new("ribbon_viewport_w"), viewport_w));
             let scroll = egui::ScrollArea::horizontal().scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).show(ui, |ui| {
                 ui.horizontal_top(|ui| {
                     ui.spacing_mut().item_spacing = vec2(2.0, 2.0);
@@ -742,11 +740,7 @@ pub(crate) fn wrap_text_items(ui: &mut Ui, app: &mut WordApp) {
     mi_check(ui, app, "Fix Position on Page", with_text == Some(false), "arrange.moveWithText", json!({"value": false}));
 }
 
-/// Width the Home tab's groups after Styles (Editing, Voice, Editor) and the ribbon's margin need.
-const HOME_TAIL_W: f32 = 280.0;
-
 fn home(app: &mut WordApp, ui: &mut Ui) {
-    let origin_x = ui.cursor().min.x;
     let st = app.session.run("format.state", &json!({})).unwrap_or_default();
     let flag = |k: &str| st.get(k).and_then(Value::as_bool).unwrap_or(false);
     group(ui, "Clipboard", Some("edit.clipboardPane"), app, |ui, app| {
@@ -981,13 +975,8 @@ fn home(app: &mut WordApp, ui: &mut Ui) {
             });
         });
     });
-    // The gallery gives up tiles, down to two, so the groups after it (Editing, Voice, Editor) stay in
-    // view in a narrow window instead of being scrolled out of sight.
-    let tiles = ui
-        .data(|d| d.get_temp::<f32>(egui::Id::new("ribbon_viewport_w")))
-        .map_or(crate::previews::STYLE_TILES_MAX, |w| crate::previews::style_tiles_for(w - (ui.cursor().min.x - origin_x) - HOME_TAIL_W));
     group(ui, "Styles", Some("styles.pane"), app, |ui, app| {
-        crate::previews::style_gallery(app, ui, &st, tiles);
+        crate::previews::style_gallery(app, ui, &st);
     });
     group(ui, "Editing", None, app, |ui, app| {
         stack(ui, |ui| {

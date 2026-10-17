@@ -4561,7 +4561,7 @@ fn manage_styles_lists_only_the_curated_styles_in_fixed_order() {
     assert_eq!(alpha, rec, "the curated order does not depend on `sort`");
     let list = rec.as_array().unwrap();
     let names: Vec<&str> = list.iter().map(|x| x["name"].as_str().unwrap()).collect();
-    assert_eq!(names, ["Normal", "Title", "Heading 1", "Heading 2", "Subtitle", "Quote", "Emphasis", "Footnote Text"]);
+    assert_eq!(names, ["Title", "Heading 1", "Heading 2", "Heading 3", "Footnote Text", "Normal", "Subtitle", "Quote", "Emphasis"]);
     let find = |name: &str| list.iter().find(|x| x["name"] == name).unwrap_or_else(|| panic!("{name} listed"));
     assert_eq!(find("Normal")["type"], "paragraph");
     assert_eq!(find("Normal")["builtIn"], true);
@@ -4571,12 +4571,17 @@ fn manage_styles_lists_only_the_curated_styles_in_fixed_order() {
     assert!(find("Heading 1")["format"]["size"].is_number(), "description formatting");
     assert_eq!(find("Emphasis")["type"], "character");
     // The character half of a linked pair is not listed; styles outside the set are not offered.
-    for hidden in ["Heading1Char", "TableGrid", "Heading3", "NoSpacing"] {
+    for hidden in ["Heading1Char", "TableGrid", "NoSpacing"] {
         assert!(!list.iter().any(|x| x["id"] == hidden), "{hidden} not offered");
     }
     // The curated gallery matches, and the other styles stay in the sheet for existing documents.
     let gallery: Vec<&str> = s.doc.styles.curated_gallery().iter().map(|x| x.id.as_str()).collect();
     assert_eq!(gallery, wordcraft_doc::styles::CURATED_STYLES);
+    assert_eq!(
+        gallery[..5],
+        ["Title", "Heading1", "Heading2", "Heading3", "FootnoteText"],
+        "the Styles gallery opens with the headings and Footnote Text"
+    );
     assert!(s.doc.styles.get("Heading3").is_some());
     assert!(s.run("styles.manage", &json!({"sort": "sideways"})).is_err());
     assert!(!s.dirty);

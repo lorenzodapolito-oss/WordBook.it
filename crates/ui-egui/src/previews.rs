@@ -504,32 +504,27 @@ pub fn style_preview(app: &mut WordApp, ui: &mut Ui, id: &str, ty: &str, size: e
     }
 }
 
-/// Most tiles the Home tab's Styles gallery shows, and the fewest it shrinks to.
-pub const STYLE_TILES_MAX: usize = 6;
-const STYLE_TILES_MIN: usize = 2;
-const STYLE_TILE_W: f32 = 76.0;
-const STYLE_ARROWS_W: f32 = 18.0;
-
-/// How many tiles fit in `room` points (the gallery's own width, arrows included).
-pub fn style_tiles_for(room: f32) -> usize {
-    let n = ((room - STYLE_ARROWS_W) / STYLE_TILE_W).floor();
-    if n.is_finite() { (n.max(0.0) as usize).clamp(STYLE_TILES_MIN, STYLE_TILES_MAX) } else { STYLE_TILES_MAX }
-}
-
-/// The Home tab's Styles gallery, `visible` tiles wide.
-pub fn style_gallery(app: &mut WordApp, ui: &mut Ui, state: &Value, visible: usize) {
+/// The Home tab's Styles gallery: six boxes (three columns, two rows) with only the style's name,
+/// no sample. The arrows page through the other styles, six at a time; the third opens the pane.
+pub fn style_gallery(app: &mut WordApp, ui: &mut Ui, state: &Value) {
+    const COLS: usize = 3;
+    const PAGE: usize = 6;
+    const CELL_W: f32 = 84.0;
+    const ARROWS_W: f32 = 18.0;
     let t = Tokens::get(ui.ctx());
     let current = state.get("style").and_then(Value::as_str).unwrap_or("Normal").to_string();
     let styles: Vec<(String, String)> = app.session.doc.styles.curated_gallery().iter().map(|s| (s.id.clone(), crate::i18n::style_name(s))).collect();
-    let rev = app.session.rev();
-    let skey = app.previews.styles_key(&app.session.doc, rev);
-    let ppp = ui.ctx().pixels_per_point();
-    let start = ui.data(|d| d.get_temp::<usize>(egui::Id::new("gallery_start"))).unwrap_or(0).min(styles.len().saturating_sub(1));
-    let visible = visible.clamp(STYLE_TILES_MIN, STYLE_TILES_MAX);
-    let (area, _) = ui.allocate_exact_size(vec2(visible as f32 * STYLE_TILE_W + STYLE_ARROWS_W, crate::widgets::CONTENT_H), Sense::hover());
+    let last_page_start = styles.len().saturating_sub(1) / PAGE * PAGE;
+    let start = ui.data(|d| d.get_temp::<usize>(egui::Id::new("gallery_start"))).unwrap_or(0).min(last_page_start) / PAGE * PAGE;
+    let (area, _) = ui.allocate_exact_size(vec2(COLS as f32 * CELL_W + ARROWS_W + 4.0, crate::widgets::CONTENT_H), Sense::hover());
     ui.painter().rect(area.shrink(1.0), 4.0, t.input, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
-    for (k, (id, name)) in styles.iter().skip(start).take(visible).enumerate() {
-        let r = Rect::from_min_size(pos2(area.min.x + 3.0 + k as f32 * 76.0, area.min.y + 3.0), vec2(74.0, area.height() - 6.0));
+    let cell_h = (area.height() - 6.0 - 2.0) / 2.0;
+    for (k, (id, name)) in styles.iter().skip(start).take(PAGE).enumerate() {
+        let (col, row) = (k % COLS, k / COLS);
+        let r = Rect::from_min_size(
+            pos2(area.min.x + 3.0 + col as f32 * CELL_W, area.min.y + 3.0 + row as f32 * (cell_h + 2.0)),
+            vec2(CELL_W - 2.0, cell_h),
+        );
         let resp = ui.interact(r, ui.id().with(("style_tile", id)), Sense::click());
         let active = *id == current;
         resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, active, name));
@@ -538,34 +533,15 @@ pub fn style_gallery(app: &mut WordApp, ui: &mut Ui, state: &Value, visible: usi
         } else if resp.hovered() {
             ui.painter().rect_filled(r, 3.0, t.hover);
         }
-        let lang = crate::i18n::current().code();
-        let dark_page = app.session.view.dark_mode;
-        let key = format!("style:{id}:{skey}:{ppp}:{lang}:{dark_page}");
-        let doc = &app.session.doc;
-        let tex = app.previews.get_or(ui.ctx(), &key, || {
-            // Sample letters in the interface's script (`АаБбВвГг` in Russian).
-            let mut p = Paragraph::with_text(tl!("AaBbCcDd"), CharProps::default()).styled(id);
-            p.props.space_before = Some(0.0);
-            p.props.align = Some(wordcraft_doc::Align::Left);
-            // Keep hanging indents (bullets) but start the first line at the tile's left edge.
-            let first = doc.styles.resolve_para(&p.props).indent_first;
-            p.props.indent_left = Some(if first.is_finite() { (-first).max(0.0) } else { 0.0 });
-            p.props.borders = None;
-            p.props.shading = None;
-            style_snippet(doc, p, 220.0, 30.0, ppp, 1.0, dark_page)
-        });
-        if let Some(h) = tex {
-            let sz = h.size_vec2() / ppp;
-            let ir = Rect::from_min_size(pos2(r.min.x + 3.0, r.min.y + 4.0), sz.min(vec2(68.0, 32.0)));
-            let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2((ir.width() / sz.x).min(1.0), (ir.height() / sz.y).min(1.0)));
-            ui.painter().with_clip_rect(r).image(h.id(), ir, uv, preview_tint(&t, dark_page));
-        }
-        let mut job = egui::text::LayoutJob::single_section(name.clone(), egui::TextFormat::simple(regular(10.5), t.text));
-        job.wrap = egui::text::TextWrapping::truncate_at_width(r.width() - 6.0);
+        // A long name ("Footnote Text") wraps onto a second line, smaller, instead of being cut.
+        let long = name.chars().count() > 12;
+        let mut job = egui::text::LayoutJob::single_section(name.clone(), egui::TextFormat::simple(regular(if long { 10.0 } else { 11.5 }), t.text));
+        job.wrap = egui::text::TextWrapping { max_width: r.width() - 8.0, max_rows: 2, break_anywhere: false, overflow_character: Some('…') };
+        job.halign = egui::Align::Center;
         let galley = ui.painter().layout_job(job);
-        let label_pos = pos2(r.center().x - galley.size().x / 2.0, r.max.y - 9.0 - galley.size().y / 2.0);
+        let label_pos = (r.center() - galley.rect.center().to_vec2()).round();
         ui.painter().with_clip_rect(r).galley(label_pos, galley, t.text);
-        // Right-click a tile: the same style actions as the Styles pane.
+        // Right-click a box: the same style actions as the Styles pane.
         resp.context_menu(|ui| {
             if ui.button(tl!("Update to Match Selection")).clicked() {
                 let _ = app.run("styles.updateToMatch", json!({"style": id}));
@@ -581,7 +557,7 @@ pub fn style_gallery(app: &mut WordApp, ui: &mut Ui, state: &Value, visible: usi
         }
     }
     // Scroll arrows and "more".
-    let ar = Rect::from_min_max(pos2(area.max.x - 16.0, area.min.y + 2.0), pos2(area.max.x - 2.0, area.max.y - 2.0));
+    let ar = Rect::from_min_max(pos2(area.max.x - ARROWS_W, area.min.y + 2.0), pos2(area.max.x - 2.0, area.max.y - 2.0));
     let thirds = ar.height() / 3.0;
     for (i, (icon, delta)) in [("chevronUp", -1i32), ("chevronDown", 1), ("more", 0)].iter().enumerate() {
         let br = Rect::from_min_size(pos2(ar.min.x, ar.min.y + thirds * i as f32), vec2(ar.width(), thirds));
@@ -594,7 +570,7 @@ pub fn style_gallery(app: &mut WordApp, ui: &mut Ui, state: &Value, visible: usi
             if *delta == 0 {
                 let _ = app.run("view.stylesPane", json!({"value": true}));
             } else {
-                let n = if *delta < 0 { start.saturating_sub(visible) } else { (start + visible).min(styles.len().saturating_sub(1)) };
+                let n = if *delta < 0 { start.saturating_sub(PAGE) } else { (start + PAGE).min(last_page_start) };
                 ui.data_mut(|d| d.insert_temp(egui::Id::new("gallery_start"), n));
             }
         }
@@ -675,17 +651,6 @@ pub fn table_style_tile(ui: &mut Ui, app: &mut WordApp, style: &str) -> Response
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// The Styles gallery gives up tiles in a narrow window, never below two or above six.
-    #[test]
-    fn style_gallery_shrinks_with_the_room_it_gets() {
-        assert_eq!(style_tiles_for(10_000.0), STYLE_TILES_MAX);
-        assert_eq!(style_tiles_for(6.0 * STYLE_TILE_W + STYLE_ARROWS_W), 6);
-        assert_eq!(style_tiles_for(6.0 * STYLE_TILE_W + STYLE_ARROWS_W - 1.0), 5);
-        assert_eq!(style_tiles_for(3.0 * STYLE_TILE_W + STYLE_ARROWS_W), 3);
-        assert_eq!(style_tiles_for(-50.0), STYLE_TILES_MIN);
-        assert_eq!(style_tiles_for(f32::NAN), STYLE_TILES_MAX);
-    }
 
     /// #848: each trip through the Font box loaded every family it showed, for good. Entries are
     /// now drawn with a face read for the preview alone: installed families stay unloaded.
