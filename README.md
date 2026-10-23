@@ -228,7 +228,7 @@ PowerShell, from the folder containing the executable:
 
 ```powershell
 $env:WGPU_BACKEND = "vulkan"
-& .\wordcraft.exe
+& .\wordbook.exe
 Remove-Item Env:WGPU_BACKEND                     # restore the default for later launches
 ```
 
@@ -243,7 +243,7 @@ window appears. `WGPU_BACKEND=vulkan` (or `dx12`) still overrides that.
 WordCraft compiles DirectX 12 shaders with FXC, the compiler built into Windows, so it needs no
 `dxcompiler.dll`/`dxil.dll` and ignores any copy another program put on `PATH` (#603).
 `WGPU_DX12_COMPILER` (`fxc`, `dxc`, `auto`) overrides this; with `dxc`, a matching
-`dxcompiler.dll` *and* `dxil.dll` must sit next to `wordcraft.exe`. `WGPU_BACKEND = "vulkan"`
+`dxcompiler.dll` *and* `dxil.dll` must sit next to `wordbook.exe` (`WordBook.it.exe` in the packages). `WGPU_BACKEND = "vulkan"`
 also avoids DirectX 12 altogether.
 
 **If the app is slow on an older Windows PC:** when DirectX 12 finds no graphics card with a

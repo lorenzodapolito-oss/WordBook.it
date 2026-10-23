@@ -4,8 +4,15 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
-default-run = "wordcraft"
+default-run = "wordbook"
 description = "WordCraft desktop app"
+
+# The program is built as wordbook(.exe) (a crate name cannot hold a dot); packaging and
+# `packaging/windows/WordBook.bat` copy it to WordBook.it.exe. The package keeps its name, so
+# `-p wordcraft` still works.
+[[bin]]
+name = "wordbook"
+path = "src/main.rs"
 
 [lints]
 workspace = true

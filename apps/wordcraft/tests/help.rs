@@ -4,7 +4,7 @@ use std::process::{Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
 fn app(flag: &str) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_wordcraft"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_wordbook"))
         .arg(flag)
         // With no display, an app that tries to open a window fails at once instead.
         .env_remove("DISPLAY")
