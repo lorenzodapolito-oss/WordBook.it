@@ -1831,12 +1831,11 @@ impl WordApp {
             self.ui.backstage = false;
             self.canvas.want_focus = true;
         }
+        // Recovery copies of unsaved documents no longer take over the window at start-up: the
+        // list is one click away in File › Recover (`file.recover`), and nothing is lost by not
+        // looking at it.
         if !self.recovery_seen && self.session.recovery_ready() {
             self.recovery_seen = true;
-            if !self.session.recovery_documents().is_empty() && !self.session.dirty {
-                self.ui.backstage = true;
-                self.ui.backstage_page = "recover".into();
-            }
         }
         if let Some(wait) = self.session.recovery_wait() {
             ctx.request_repaint_after(wait);
