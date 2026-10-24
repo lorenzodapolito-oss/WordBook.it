@@ -381,3 +381,12 @@ Forks and modified versions must remove them.
   <a href="https://getartcraft.com/"><img alt="ArtCraft" src="docs/brand/artcraft-mark.svg" width="28"></a><br>
   <sub>Made by the <a href="https://getartcraft.com/">ArtCraft</a> team and community.</sub>
 </p>
+
+## Scarica per Windows
+
+**[Scarica DocPlane.it (zip)](https://github.com/lorenzodapolito-oss/DocPlane/releases/latest/download/DocPlane.it.zip)** · [tutte le versioni](https://github.com/lorenzodapolito-oss/DocPlane/releases)
+
+WordBook.it è nel pacchetto **DocPlane.it**, insieme agli altri due programmi (WordBook.it, SheetCalc.it, Flickdeck.it)
+e ai dizionari. Decomprimi lo zip in una cartella e apri `DocPlane.it.exe`, oppure direttamente `WordBook.it.exe`.
+Al primo avvio Windows può mostrare «Windows ha protetto il PC» (i programmi non sono firmati):
+scegli *Ulteriori informazioni*, poi *Esegui comunque*.
