@@ -13,6 +13,8 @@ file si scambiano normalmente con Word.
 ## Cosa cambia rispetto a WordCraft
 
 - **Nome, icona e titolo** propri: la barra del titolo riporta «WordBook.it di Lorenzo D'Apolito».
+- **Nome utente di Windows** al posto di «WordCraft User»: l'avatar in alto a sinistra mostra le tue iniziali
+  e i commenti e le revisioni sono firmati con il tuo nome (si cambia da File → Opzioni → Generale).
 - **Programma `WordBook.it.exe`**, con le informazioni di versione di Windows.
 - **Modalità portatile**: una cartella `wordbook-data` accanto al programma contiene tutto il profilo
   (impostazioni, dizionari personali, copie di recupero).

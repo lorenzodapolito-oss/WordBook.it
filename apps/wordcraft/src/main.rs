@@ -175,6 +175,26 @@ fn load_prefs(app: &mut WordApp) {
     {
         app.apply_prefs(ui);
     }
+    adopt_system_user(app);
+}
+
+/// The name WordCraft starts with, until someone sets one in File › Options › General.
+const DEFAULT_AUTHOR: &str = "WordCraft User";
+
+/// WordBook.it signs comments and tracked changes (and shows the initials in the title bar) with
+/// the Windows user's name instead of the placeholder "WordCraft User", unless a name was chosen.
+fn adopt_system_user(app: &mut WordApp) {
+    if app.session.author != DEFAULT_AUTHOR {
+        return;
+    }
+    let name = ["USERNAME", "USER"]
+        .iter()
+        .filter_map(|v| std::env::var(v).ok())
+        .map(|n| n.chars().filter(|c| !c.is_control()).take(64).collect::<String>().trim().to_string())
+        .find(|n| !n.is_empty());
+    if let Some(name) = name {
+        app.session.author = name;
+    }
 }
 
 /// Fonts the user added (#582) live in `fonts` in the settings folder: load them, and store fonts
