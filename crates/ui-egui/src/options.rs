@@ -455,7 +455,9 @@ fn advanced(app: &mut WordApp, ui: &mut Ui) {
     let mut guides = app.ui.alignment_guides;
     if ui
         .checkbox(&mut guides, tl!("Show alignment guides when moving pictures and shapes"))
-        .on_hover_text(tl!("Moved objects snap to the page's edges and centre, the margins and other objects. Hold Alt to move freely."))
+        .on_hover_text(tl!(
+            "Lines show when a moved object lines up with the page's edges and centre, the margins or other objects. Hold Alt to hide them."
+        ))
         .changed()
     {
         let _ = app.run("ui.alignmentGuides", json!({"value": guides}));
@@ -1035,7 +1037,7 @@ mod tests {
     /// File › Options › Advanced › Editing: the alignment guides checkbox is the
     /// `ui.alignmentGuides` setting.
     #[test]
-    fn advanced_alignment_guides_checkbox_turns_snapping_off_and_on() {
+    fn advanced_alignment_guides_checkbox_turns_the_lines_off_and_on() {
         let mut a = app();
         a.run("file.options", json!({"pane": "advanced"})).unwrap();
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).build_ui_state(

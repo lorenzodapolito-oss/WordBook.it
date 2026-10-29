@@ -327,7 +327,7 @@ pub fn specs() -> Vec<CommandSpec> {
         .when(has_movable),
         CommandSpec::new("arrange.selectionPane", "Selection Pane", "Layout › Arrange", objects_list).pure(),
         CommandSpec::new("arrange.bounds", "Move or Resize", "Layout › Arrange", bounds)
-            .params(r#"{"width"?: pt, "height"?: pt, "x"?: pt, "y"?: pt, "page"?: n}  (x/y: the top-left on page `page` (0-based, default its page); moving an inline object floats it)"#)
+            .params(r#"{"width"?: pt, "height"?: pt, "x"?: pt, "y"?: pt, "page"?: n, "keepAnchor"?: bool}  (x/y: the top-left on page `page` (0-based, default its page); moving an inline object floats it; keepAnchor: a floating object only changes its offsets, as when a handle resizes it)"#)
             .when(has_movable),
         CommandSpec::new("arrange.copyTo", "Copy to", "Layout › Arrange", copy_to)
             .params(r#"{"x": pt, "y": pt, "page"?: n}  (Ctrl+drag: a copy of the selected object lands with its top-left there and is selected; the original and the clipboard stay as they were)"#)
@@ -689,12 +689,35 @@ fn bounds(s: &mut Session, v: &Value) -> CmdResult {
         with_obj(s, |o| o.set_size(w, h))?;
     }
     let pos = match to {
+        // A resize by a handle: the object keeps its anchor and only its offsets change, so the
+        // far edges stay put and nothing re-anchors or is held inside the page.
+        Some((x, y)) if p::bool(v, "keepAnchor").unwrap_or(false) => {
+            shift_to(s, &pos, x, y)?;
+            pos
+        }
         Some((x, y)) => move_object(s, pos, p::u64(v, "page"), x, y, (w, h))?,
         None => pos,
     };
     s.sel = Selection { anchor: pos.clone(), focus: Pos { off: pos.off + wordcraft_doc::para::OBJ.len_utf8(), ..pos.clone() } };
     let o = s.doc.para_at(&pos).and_then(|p| p.object_at(pos.off)).cloned();
     Ok(json!({"object": serde_json::to_value(o).unwrap_or(Value::Null), "pos": super::pos_json(&pos)}))
+}
+
+/// Moves the floating object at `pos` so its top-left is at (x, y) on the page it is on, without
+/// changing what it is anchored to: only its offsets change.
+fn shift_to(s: &mut Session, pos: &Pos, x: f32, y: f32) -> Result<(), CmdError> {
+    unalign(s)?;
+    s.touch(); // lay out the new size first
+    let hit = s.layout().object(pos, s.page_hint).ok_or_else(|| CmdError::Failed("the object isn't laid out".into()))?;
+    let (dx, dy) = (x - hit.rect.x, y - hit.rect.y);
+    if !dx.is_finite() || !dy.is_finite() {
+        return Err(CmdError::Params("`x` and `y` must be numbers".into()));
+    }
+    edit_float(s, pos, |f| {
+        f.x = (f.x + dx).clamp(-MAX_OFFSET, MAX_OFFSET);
+        f.y = (f.y + dy).clamp(-MAX_OFFSET, MAX_OFFSET);
+    })?;
+    Ok(())
 }
 
 /// Ctrl+drag: copy the selected object (a text box gets its own story) and move the copy to
@@ -1506,6 +1529,15 @@ mod tests {
         let o = object_area(&mut s);
         assert_eq!((o.page, o.rect.x, o.rect.y, o.rect.w, o.rect.h), (0, 250.0, 300.0, 160.0, 90.0), "{insert}");
         assert!(selected(&s).is_some());
+        // A handle resize keeps the anchor: the right and bottom edges stay where they are.
+        let before = object_area(&mut s);
+        let (right, bottom) = (before.rect.x + before.rect.w, before.rect.y + before.rect.h);
+        s.run("arrange.bounds", &json!({"width": 100, "height": 50, "page": 0, "x": right - 100.0, "y": bottom - 50.0, "keepAnchor": true})).unwrap();
+        let after = object_area(&mut s);
+        assert_eq!((after.rect.w, after.rect.h), (100.0, 50.0), "{insert}");
+        assert!((after.rect.x + 100.0 - right).abs() < 0.05 && (after.rect.y + 50.0 - bottom).abs() < 0.05, "{insert}: {:?}", after.rect);
+        assert_eq!(after.pos(), before.pos(), "{insert}: same anchor");
+        s.run("arrange.bounds", &json!({"width": 160, "height": 90, "page": 0, "x": 250, "y": 300})).unwrap();
         // Arrow keys nudge it once it floats.
         s.run("arrange.nudge", &json!({"dx": 6, "dy": -2})).unwrap();
         let n = object_area(&mut s).rect;

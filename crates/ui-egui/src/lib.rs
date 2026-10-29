@@ -311,8 +311,9 @@ pub struct UiState {
     pub recent_count: usize,
     /// File › Options › General: show the mini toolbar over a selection.
     pub mini_toolbar: bool,
-    /// File › Options › Advanced › Editing: moving a picture or shape snaps it to alignment
-    /// guides (on by default; Alt moves freely).
+    /// File › Options › Advanced › Editing: moving a picture or shape shows alignment guide
+    /// lines when it lines up with the page or another object (on by default; Alt hides them).
+    /// They never move the object.
     pub alignment_guides: bool,
     /// File › Options › General: start on File › Home (Blank document, templates, Recent) when
     /// the app opens without a document (#766); on, as in Word. See [`WordApp::start_screen`].

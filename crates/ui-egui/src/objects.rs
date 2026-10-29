@@ -8,9 +8,11 @@
 //! drag starts (#1010: a cut of the page would carry along whatever is behind it). The drop is
 //! one command, one relayout.
 //!
-//! Moving one snaps it to alignment guides ([`crate::guides`]): the page's edges and centre, the
-//! margins and the other floating objects on the page, shown as thin lines while dragging. Alt
-//! moves freely; File › Options › Advanced turns them off (`ui.alignmentGuides`).
+//! Moving one shows alignment guides ([`crate::guides`]) as thin lines while dragging, where it
+//! lines up with the page's edges and centre, the margins or the other floating objects on the
+//! page. They never move it: no snapping. Alt hides them; File › Options › Advanced turns them
+//! off (`ui.alignmentGuides`). Resizing is free too, except that a picture keeps its proportions
+//! from a corner (Shift: free) and nothing gets smaller than a few points.
 //!
 //! A selected connector shows a handle at each end instead of a frame: dragging one onto a shape
 //! glues it to the nearest connection site there (`shape.connect`), elsewhere leaves it free.
@@ -49,7 +51,7 @@ pub struct ObjectDrag {
     end: Option<(bool, (f32, f32))>,
     /// Ctrl/⌘ is held: dropping leaves the original and puts a copy at the new place.
     copy: bool,
-    /// The alignment guides a move snapped to, shown while dragging ([`crate::guides`]).
+    /// The alignment guides a move lines up with, shown while dragging ([`crate::guides`]).
     guides: Vec<crate::guides::Guide>,
     /// The object drawn alone over its rotated bounds, for the preview: made once it moves.
     preview: Option<egui::TextureHandle>,
@@ -198,11 +200,11 @@ pub fn pointer(app: &mut WordApp, ui: &Ui, resp: &egui::Response, pages: &[Rect]
             } else {
                 // Pictures keep their proportions from a corner unless Shift; shapes only with Shift.
                 d.drag.update(at, pages, scale, d.min, d.picture != shift);
-                // Alignment guides: a move snaps to the page, the margins and the other objects
-                // (Alt: freely).
+                // Alignment guides: lines show when the move lines up with the page, the margins
+                // or another object (Alt: none). Nothing snaps.
                 d.guides.clear();
                 if d.drag.grab == Grab::Move && d.drag.moved && app.ui.alignment_guides && !ui.input(|i| i.modifiers.alt) {
-                    snap_move(layout, &mut d, scale);
+                    show_alignment(layout, &mut d, scale);
                 }
             }
             if d.drag.moved && d.preview.is_none() && shows_pixels(&d) {
@@ -294,15 +296,13 @@ pub fn pointer(app: &mut WordApp, ui: &Ui, resp: &egui::Response, pages: &[Rect]
     true
 }
 
-/// Snap a moved object's bounds (rotated ones by their turned box) to the guides of the page
-/// it's over: the page's edges and centre, its margins, the other floating objects there.
-fn snap_move(layout: &DocLayout, d: &mut ObjectDrag, scale: f32) {
+/// Marks the guides a moved object (rotated ones by their turned box) is lined up with on the
+/// page it's over: the page's edges and centre, its margins, the other floating objects there.
+/// The object itself is never moved by them.
+fn show_alignment(layout: &DocLayout, d: &mut ObjectDrag, scale: f32) {
     let Some(pg) = layout.pages.get(d.drag.to_page) else { return };
     let candidates = guides::candidates(paper_width(pg), pg.h, pg.body, snap_targets(pg, &d.object));
-    let s = guides::snap(d.object.spin.bounds(d.drag.rect), &candidates, guides::SNAP_SCREEN / scale.max(0.01));
-    d.drag.rect.x += s.dx;
-    d.drag.rect.y += s.dy;
-    d.guides = s.lines;
+    d.guides = guides::aligned(d.object.spin.bounds(d.drag.rect), &candidates, guides::ALIGN_SCREEN / scale.max(0.01));
 }
 
 /// The page's own width, without the comment balloons' markup area.
@@ -310,7 +310,7 @@ fn paper_width(pg: &wordcraft_layout::Page) -> f32 {
     (pg.w - pg.markup).max(0.0)
 }
 
-/// The bounds of the floating objects on `pg` that `me` can snap to: all but itself and, for a
+/// The bounds of the floating objects on `pg` that `me` can line up with: all but itself and, for a
 /// text box, the objects in its text (they move with it).
 fn snap_targets(pg: &wordcraft_layout::Page, me: &ObjectHit) -> Vec<wordcraft_geom::Rect> {
     let pos = me.pos();
@@ -330,7 +330,7 @@ fn snap_targets(pg: &wordcraft_layout::Page, me: &ObjectHit) -> Vec<wordcraft_ge
         .collect()
 }
 
-/// The guides a move snapped to: thin lines across the page (not into the balloon area).
+/// The guides a move is lined up with: thin lines across the page (not into the balloon area).
 fn paint_guides(d: &ObjectDrag, painter: &Painter, t: &Tokens, layout: &DocLayout, pages: &[Rect], scale: f32) {
     let Some(p) = pages.get(d.drag.to_page) else { return };
     let right = layout.pages.get(d.drag.to_page).map_or(p.max.x, |pg| (p.min.x + paper_width(pg) * scale).min(p.max.x));
@@ -487,8 +487,9 @@ fn drop(app: &mut WordApp, d: &ObjectDrag) {
         }
         Grab::Move => json!({"page": d.drag.to_page, "x": r.x, "y": r.y}),
         // An inline object stays in the text; a floating one keeps its far edges put.
-        Grab::Resize(_) if d.object.floating() && movable(app, &d.object) => {
-            json!({"width": r.w, "height": r.h, "page": d.drag.page, "x": r.x, "y": r.y})
+        // Only a handle that moves the top-left corner moves the object (and so re-anchors it).
+        Grab::Resize(_) if d.object.floating() && movable(app, &d.object) && (r.x != d.drag.start.x || r.y != d.drag.start.y) => {
+            json!({"width": r.w, "height": r.h, "page": d.drag.page, "x": r.x, "y": r.y, "keepAnchor": true})
         }
         Grab::Resize(_) => json!({"width": r.w, "height": r.h}),
     };
@@ -687,11 +688,11 @@ mod tests {
         let (app, hit) = app_with(shape);
         assert!(!fixed(&app, &hit));
     }
-    /// Alignment guides: dragging a floating shape to within a few points of the page's centre
-    /// snaps its centre exactly onto it and shows the guide while dragging; the drop lands there,
-    /// and the guides go. Holding Alt drags freely.
+    /// Alignment guides only show: a floating shape dragged exactly onto the page's centre shows
+    /// the guide, one a point and a half off shows none, and neither is pulled anywhere; the drop
+    /// lands where the pointer put it. Holding Alt hides the guide.
     #[test]
-    fn dragging_a_shape_snaps_to_the_page_centre_unless_alt() {
+    fn dragging_a_shape_shows_but_never_snaps_to_the_page_centre() {
         use egui::{Event, Modifiers, PointerButton};
         let mut a = WordApp::new(wordcraft_engine::Session::new(Document::new()), crate::Services::default());
         a.run("view.commentsPane", json!({"value": false})).unwrap();
@@ -714,11 +715,11 @@ mod tests {
         let button =
             |at: Pos2, pressed: bool| Event::PointerButton { pos: at, button: PointerButton::Primary, pressed, modifiers: Default::default() };
         // Press on the shape's centre and drag it so its centre ends 1.5 pt right of the page's.
-        let drag = |h: &mut egui_kittest::Harness<'_, WordApp>, alt: bool| {
+        let drag = |h: &mut egui_kittest::Harness<'_, WordApp>, alt: bool, off: f32| {
             let r = shape(h);
             let (cx, cy) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
             let from = crate::canvas::page_to_screen(h.state_mut(), 0, cx, cy).unwrap();
-            let to = crate::canvas::page_to_screen(h.state_mut(), 0, centre + 1.5, cy).unwrap();
+            let to = crate::canvas::page_to_screen(h.state_mut(), 0, centre + off, cy).unwrap();
             h.event(Event::ModifiersChanged(if alt { Modifiers::ALT } else { Modifiers::default() }));
             h.event(Event::PointerMoved(from));
             h.event(button(from, true));
@@ -738,18 +739,21 @@ mod tests {
             h.step();
             mid
         };
-        let (rect, guides) = drag(&mut h, false);
-        assert!((rect.x + rect.w / 2.0 - centre).abs() < 1e-3, "snapped onto the page's centre while dragging: {rect:?}");
-        assert!(guides.contains(&crate::guides::Guide::x(centre)), "the centre guide shows: {guides:?}");
+        // 1.5 pt off the centre: free, and no guide.
+        let (rect, guides) = drag(&mut h, false, 1.5);
+        assert!((rect.x + rect.w / 2.0 - centre - 1.5).abs() < 0.01, "not pulled onto the centre: {rect:?}");
+        assert!(guides.is_empty(), "{guides:?}");
         assert!(h.state().canvas.obj_drag.is_none(), "dropped: no guides any more");
         let r = shape(&mut h);
-        assert!((r.x + r.w / 2.0 - centre).abs() < 0.01, "dropped on the centre: {r:?}");
-        // Alt: no snapping, no guides; it lands where the pointer put it.
-        let (rect, guides) = drag(&mut h, true);
-        assert!((rect.x + rect.w / 2.0 - centre - 1.5).abs() < 0.01, "free with Alt: {rect:?}");
+        assert!((r.x + r.w / 2.0 - centre - 1.5).abs() < 0.01, "dropped where the pointer put it: {r:?}");
+        // Exactly on the centre: the guide shows, the shape is where the pointer is.
+        let (rect, guides) = drag(&mut h, false, 0.0);
+        assert!((rect.x + rect.w / 2.0 - centre).abs() < 0.01, "{rect:?}");
+        assert!(guides.contains(&crate::guides::Guide::x(centre)), "the centre guide shows: {guides:?}");
+        // Alt: no guides.
+        let (rect, guides) = drag(&mut h, true, 0.0);
+        assert!((rect.x + rect.w / 2.0 - centre).abs() < 0.01, "{rect:?}");
         assert!(guides.is_empty(), "{guides:?}");
-        let r = shape(&mut h);
-        assert!((r.x + r.w / 2.0 - centre - 1.5).abs() < 0.01, "{r:?}");
     }
     /// A floating rectangle shape, `w` × `h`.
     fn floating_rect(w: f32, h: f32) -> InlineObject {
@@ -768,7 +772,7 @@ mod tests {
         }
     }
 
-    /// A text box doesn't snap to the objects inside it (they move with it).
+    /// A text box doesn't show guides for the objects inside it (they move with it).
     #[test]
     fn a_text_box_does_not_snap_to_its_own_contents() {
         let mut app = WordApp::new(wordcraft_engine::Session::new(Document::new()), crate::Services::default());
@@ -792,10 +796,10 @@ mod tests {
         assert!(other.contains(&bx.bounds()), "{other:?}");
     }
 
-    /// Pressing Alt in the middle of a drag stops the snapping, and letting it go again doesn't
+    /// Pressing Alt in the middle of a drag hides the guides, and letting it go again doesn't
     /// turn keytips on (the Alt was part of the drag, not a tap).
     #[test]
-    fn alt_pressed_during_a_drag_unsnaps_and_keeps_keytips_off() {
+    fn alt_pressed_during_a_drag_hides_guides_and_keeps_keytips_off() {
         use egui::{Event, Modifiers, PointerButton};
         let mut a = WordApp::new(wordcraft_engine::Session::new(Document::new()), crate::Services::default());
         a.run("view.commentsPane", json!({"value": false})).unwrap();
@@ -816,7 +820,7 @@ mod tests {
         let r = h.state_mut().session.layout().object(&Pos::body(0, 0), 0).unwrap().rect;
         let cy = r.y + r.h / 2.0;
         let from = crate::canvas::page_to_screen(h.state_mut(), 0, r.x + r.w / 2.0, cy).unwrap();
-        let to = crate::canvas::page_to_screen(h.state_mut(), 0, centre + 1.5, cy).unwrap();
+        let to = crate::canvas::page_to_screen(h.state_mut(), 0, centre, cy).unwrap();
         let button =
             |at: Pos2, pressed: bool| Event::PointerButton { pos: at, button: PointerButton::Primary, pressed, modifiers: Default::default() };
         h.event(Event::PointerMoved(from));
@@ -826,7 +830,7 @@ mod tests {
             h.event(Event::PointerMoved(at));
             h.step();
         }
-        assert!(!h.state().canvas.obj_drag.as_ref().expect("dragging").guides.is_empty(), "snapped before Alt");
+        assert!(!h.state().canvas.obj_drag.as_ref().expect("dragging").guides.is_empty(), "the guide shows before Alt");
         // Alt down mid-drag, as a key and a modifier change (backends send both).
         let alt_key =
             |pressed: bool, modifiers: Modifiers| Event::Key { key: egui::Key::AltLeft, physical_key: None, pressed, repeat: false, modifiers };
@@ -835,7 +839,7 @@ mod tests {
         h.event(Event::PointerMoved(to + egui::vec2(0.0, 1.0)));
         h.step();
         let d = h.state().canvas.obj_drag.as_ref().expect("still dragging");
-        assert!(d.guides.is_empty() && (d.drag.rect.x + d.drag.rect.w / 2.0 - centre - 1.5).abs() < 0.01, "free with Alt");
+        assert!(d.guides.is_empty() && (d.drag.rect.x + d.drag.rect.w / 2.0 - centre).abs() < 0.01, "guides hidden with Alt");
         // Alt up, then the release.
         h.event(alt_key(false, Modifiers::default()));
         h.event(Event::ModifiersChanged(Modifiers::default()));
