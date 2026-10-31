@@ -170,9 +170,7 @@ pub fn pointer(app: &mut WordApp, ui: &Ui, resp: &egui::Response, pages: &[Rect]
                 app.canvas.obj_drag = Some(d);
                 return false;
             }
-            let pos = d.object.pos();
-            let end = Pos { off: pos.off + OBJ.len_utf8(), ..pos.clone() };
-            let _ = app.run("select.range", json!({"anchor": pos, "focus": end}));
+            select_object(app, &d.object.pos());
             // The text click path has been tracking the pointer until it became a drag.
             app.canvas.cancel_text_drag();
             d.pending_behind = false;
@@ -270,9 +268,7 @@ pub fn pointer(app: &mut WordApp, ui: &Ui, resp: &egui::Response, pages: &[Rect]
         return false;
     }
     if pressed {
-        let pos = object.pos();
-        let end = Pos { off: pos.off + OBJ.len_utf8(), ..pos.clone() };
-        let _ = app.run("select.range", json!({"anchor": pos, "focus": end}));
+        select_object(app, &object.pos());
         let (min, picture) = match selected(app) {
             Some((_, o)) => (wordcraft_engine::cmd::objects::min_size(o), matches!(o, InlineObject::Image { .. })),
             None => return true,
@@ -294,6 +290,15 @@ pub fn pointer(app: &mut WordApp, ui: &Ui, resp: &egui::Response, pages: &[Rect]
         }
     }
     true
+}
+
+/// Selects the object at `pos` without the view following the caret: the caret sits at the
+/// object's anchor, which can be far from the object itself, and scrolling there while the user is
+/// pressing on the object (or its handles) moves it out from under the pointer.
+fn select_object(app: &mut WordApp, pos: &Pos) {
+    let end = Pos { off: pos.off + OBJ.len_utf8(), ..pos.clone() };
+    let _ = app.run("select.range", json!({"anchor": pos, "focus": end}));
+    app.canvas.scroll_to_caret = false;
 }
 
 /// Marks the guides a moved object (rotated ones by their turned box) is lined up with on the
@@ -375,8 +380,7 @@ pub fn select_at(app: &mut WordApp, layout: &DocLayout, pages: &[Rect], scale: f
     let pos = object.pos();
     // Already selected (alone or among several picked for Group): keep the selection.
     if !wordcraft_engine::cmd::objects::picked_objects(&app.session).contains(&pos) {
-        let end = Pos { off: pos.off + OBJ.len_utf8(), ..pos.clone() };
-        let _ = app.run("select.range", json!({"anchor": pos, "focus": end}));
+        select_object(app, &pos);
     }
     true
 }
@@ -479,10 +483,12 @@ fn drop(app: &mut WordApp, d: &ObjectDrag) {
     let params = match d.drag.grab {
         Grab::Rotate => {
             let _ = app.run("arrange.rotation", json!({"degrees": d.drag.deg}));
+            app.canvas.scroll_to_caret = false;
             return;
         }
         Grab::Move if d.copy => {
             let _ = app.run("arrange.copyTo", json!({"page": d.drag.to_page, "x": r.x, "y": r.y}));
+            app.canvas.scroll_to_caret = false;
             return;
         }
         Grab::Move => json!({"page": d.drag.to_page, "x": r.x, "y": r.y}),
@@ -494,6 +500,8 @@ fn drop(app: &mut WordApp, d: &ObjectDrag) {
         Grab::Resize(_) => json!({"width": r.w, "height": r.h}),
     };
     let _ = app.run("arrange.bounds", params);
+    // The object stays where the pointer left it: the view doesn't chase the caret.
+    app.canvas.scroll_to_caret = false;
 }
 
 /// Draw the frame of the active object, or the drag preview.
@@ -691,6 +699,18 @@ mod tests {
     /// Alignment guides only show: a floating shape dragged exactly onto the page's centre shows
     /// the guide, one a point and a half off shows none, and neither is pulled anywhere; the drop
     /// lands where the pointer put it. Holding Alt hides the guide.
+    /// Selecting an object by pressing on it doesn't send the view after the caret (which sits at
+    /// the object's anchor, maybe far away): that made the object run from under the pointer.
+    #[test]
+    fn selecting_an_object_does_not_chase_the_caret() {
+        let chart =
+            InlineObject::Graphic { w: 200.0, h: 100.0, alt: String::new(), float: Default::default(), graphic: Arc::new(Default::default()) };
+        let (mut app, hit) = app_with(chart);
+        app.canvas.scroll_to_caret = false;
+        select_object(&mut app, &hit.pos());
+        assert!(!app.canvas.scroll_to_caret);
+    }
+
     #[test]
     fn dragging_a_shape_shows_but_never_snaps_to_the_page_centre() {
         use egui::{Event, Modifiers, PointerButton};
