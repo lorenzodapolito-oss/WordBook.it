@@ -73,6 +73,7 @@ pub mod read_aloud;
 pub mod ribbon;
 pub mod ruler_tabs;
 pub mod scroll;
+pub mod scroll_hint;
 pub mod system_clipboard;
 pub mod table_mouse;
 pub mod table_pen;

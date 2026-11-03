@@ -119,7 +119,9 @@ pub struct CanvasState {
     pub(crate) auto_scroll: crate::autoscroll::AutoScroll,
     /// The scroll offset and its maximum at the end of last frame.
     pub(crate) scroll_offset: egui::Vec2,
-    scroll_max: egui::Vec2,
+    pub(crate) scroll_max: egui::Vec2,
+    /// The page and heading hint shown while the person scrolls.
+    pub(crate) scroll_hint: crate::scroll_hint::ScrollHint,
     /// Explicit page turn to apply on the next frame (reading navigation buttons/keys).
     scroll_request: Option<egui::Vec2>,
     /// The viewport (the content's visible rect on screen) at the end of last frame; the
@@ -235,6 +237,7 @@ impl Default for CanvasState {
             auto_scroll: Default::default(),
             scroll_offset: egui::Vec2::ZERO,
             scroll_max: egui::Vec2::ZERO,
+            scroll_hint: Default::default(),
             scroll_request: None,
             viewport: None,
             cols: 1,
@@ -1010,6 +1013,7 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
         // Bringing the caret into view glides there, or jumps with animation effects off.
         .animated(animate)
         .scroll_source(egui::scroll_area::ScrollSource { mouse_wheel: false, ..Default::default() });
+    let scrolled_by_person = delta != egui::Vec2::ZERO;
     if app.session.view.read_mode {
         scroll_area = scroll_area.scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden);
     }
@@ -1419,6 +1423,7 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
     app.canvas.scroll_offset = out.state.offset;
     crate::ink::replay_bar(app, ui, out.inner_rect);
     app.canvas.scroll_max = (out.content_size - out.inner_rect.size()).max(egui::Vec2::ZERO);
+    crate::scroll_hint::show(app, ui, out.inner_rect, scrolled_by_person && !app.session.view.read_mode);
     if app.session.view.read_mode {
         let step = app.session.view.read_width * geo.scale + GAP;
         if step.is_finite() && step > 0.0 {
